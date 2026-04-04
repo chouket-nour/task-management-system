@@ -16,6 +16,7 @@ services:
   # ── Auth Service ──
   auth-service:
     build: ./backend/auth-service
+    image: nourchouket2000/rfc-auth-service:${IMAGE_TAG:-latest}
     container_name: auth-service
     ports:
       - "5001:5001"
@@ -32,6 +33,7 @@ services:
   # ── User Service ──
   user-service:
     build: ./backend/user-service
+    image: nourchouket2000/rfc-user-service:${IMAGE_TAG:-latest}
     container_name: user-service
     ports:
       - "5002:5002"
@@ -47,6 +49,7 @@ services:
   # ── Task Service ──
   task-service:
     build: ./backend/task-service
+    image: nourchouket2000/rfc-task-service:${IMAGE_TAG:-latest}
     container_name: task-service
     ports:
       - "5003:5003"
@@ -64,6 +67,7 @@ services:
   # ── Project Service ──
   project-service:
     build: ./backend/project-service
+    image: nourchouket2000/rfc-project-service:${IMAGE_TAG:-latest}
     container_name: project-service
     ports:
       - "5004:5004"
@@ -79,6 +83,7 @@ services:
   # ── Conge Service ──
   conge-service:
     build: ./backend/conge-service
+    image: nourchouket2000/rfc-conge-service:${IMAGE_TAG:-latest}
     container_name: conge-service
     ports:
       - "5005:5005"
@@ -96,6 +101,7 @@ services:
   # ── Notification Service ──
   notification-service:
     build: ./backend/notification-service
+    image: nourchouket2000/rfc-notification-service:${IMAGE_TAG:-latest}
     container_name: notification-service
     ports:
       - "5006:5006"
@@ -111,6 +117,7 @@ services:
   # ── API Gateway ──
   api-gateway:
     build: ./backend/api-gateway
+    image: nourchouket2000/rfc-api-gateway:${IMAGE_TAG:-latest}
     container_name: api-gateway
     ports:
       - "5000:5000"
@@ -135,6 +142,7 @@ services:
   # ── Frontend ──
   frontend:
     build: ./frontend
+    image: nourchouket2000/rfc-frontend:${IMAGE_TAG:-latest}
     container_name: frontend
     ports:
       - "80:80"
