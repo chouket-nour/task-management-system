@@ -1,0 +1,167 @@
+version: "3.8"
+
+services:
+
+  # ── MongoDB ──
+  mongodb:
+    image: mongo:6
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - rfc-network
+
+  # ── Auth Service ──
+  auth-service:
+    build: ./backend/auth-service
+    container_name: auth-service
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - MONGO_URI=mongodb://mongodb:27017/auth-service
+      - JWT_SECRET=supersecret
+      - USER_SERVICE_URL=http://user-service:5002
+    depends_on:
+      - mongodb
+    networks:
+      - rfc-network
+
+  # ── User Service ──
+  user-service:
+    build: ./backend/user-service
+    container_name: user-service
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+      - MONGO_URI=mongodb://mongodb:27017/user-service
+      - JWT_SECRET=supersecret
+    depends_on:
+      - mongodb
+    networks:
+      - rfc-network
+
+  # ── Task Service ──
+  task-service:
+    build: ./backend/task-service
+    container_name: task-service
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - MONGO_URI=mongodb://mongodb:27017/task-service
+      - JWT_SECRET=supersecret
+      - NOTIF_SERVICE_URL=http://notification-service:5006/api/notifications
+    depends_on:
+      - mongodb
+      - notification-service
+    networks:
+      - rfc-network
+
+  # ── Project Service ──
+  project-service:
+    build: ./backend/project-service
+    container_name: project-service
+    ports:
+      - "5004:5004"
+    environment:
+      - PORT=5004
+      - MONGO_URI=mongodb://mongodb:27017/project-service
+      - JWT_SECRET=supersecret
+    depends_on:
+      - mongodb
+    networks:
+      - rfc-network
+
+  # ── Conge Service ──
+  conge-service:
+    build: ./backend/conge-service
+    container_name: conge-service
+    ports:
+      - "5005:5005"
+    environment:
+      - PORT=5005
+      - MONGO_URI=mongodb://mongodb:27017/conge-service
+      - JWT_SECRET=supersecret
+      - NOTIF_SERVICE_URL=http://notification-service:5006/api/notifications
+    depends_on:
+      - mongodb
+      - notification-service
+    networks:
+      - rfc-network
+
+  # ── Notification Service ──
+  notification-service:
+    build: ./backend/notification-service
+    container_name: notification-service
+    ports:
+      - "5006:5006"
+    environment:
+      - PORT=5006
+      - MONGO_URI=mongodb://mongodb:27017/notification-service
+      - JWT_SECRET=supersecret
+    depends_on:
+      - mongodb
+    networks:
+      - rfc-network
+
+  # ── API Gateway ──
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: api-gateway
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - AUTH_SERVICE_URL=http://auth-service:5001
+      - USER_SERVICE_URL=http://user-service:5002
+      - TASK_SERVICE_URL=http://task-service:5003
+      - PROJECT_SERVICE_URL=http://project-service:5004
+      - CONGE_SERVICE_URL=http://conge-service:5005
+      - NOTIF_SERVICE_URL=http://notification-service:5006
+    depends_on:
+      - auth-service
+      - user-service
+      - task-service
+      - project-service
+      - conge-service
+      - notification-service
+    networks:
+      - rfc-network
+
+  # ── Frontend ──
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - rfc-network
+
+  # ── Jenkins ──
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - rfc-network
+
+# ── Networks ──
+networks:
+  rfc-network:
+    driver: bridge
+
+# ── Volumes ──
+volumes:
+  mongo_data:
+  jenkins_data:
