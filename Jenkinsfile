@@ -151,7 +151,7 @@ pipeline {
             echo " RFC Connect déployé avec succès — build #${env.BUILD_NUMBER}"
         }
         failure {
-            echo "❌ Échec du pipeline — build #${env.BUILD_NUMBER}"
+            echo " Échec du pipeline — build #${env.BUILD_NUMBER}"
             sh 'docker compose logs --tail=50'
         }
         always {
