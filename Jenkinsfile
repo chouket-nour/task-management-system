@@ -65,7 +65,7 @@ pipeline {
         stage('Build Docker') {
             steps {
                 echo '=== Build des images Docker ==='
-                sh 'docker compose build'
+                sh 'docker-compose build'
             }
         }
 
@@ -73,15 +73,15 @@ pipeline {
             steps {
                 echo '=== Push vers Docker Hub ==='
                 sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                sh 'docker compose push'
+                sh 'docker-compose push'
             }
         }
 
         stage('Deploy') {
             steps {
                 echo '=== Déploiement ==='
-                sh 'docker compose down --remove-orphans'
-                sh 'docker compose up -d'
+                sh 'docker-compose down --remove-orphans'
+                sh 'docker-compose up -d'
             }
         }
 
@@ -114,6 +114,7 @@ pipeline {
         }
         failure {
             echo " Échec du pipeline — build #${env.BUILD_NUMBER}"
+            sh 'docker-compose logs --tail=50'
         }
         always {
             echo "Pipeline terminé — build #${env.BUILD_NUMBER}"
