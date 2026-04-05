@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'NodeJS'
+    }
+
     environment {
         DOCKER_USER = credentials('docker-username')
         DOCKER_PASS = credentials('docker-password')
@@ -32,70 +36,28 @@ pipeline {
             failFast true
             parallel {
                 stage('Test auth')   { 
-                    steps { 
-                        dir('backend/auth-service') { sh 'npm test' } 
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, 
-                                  testResults: 'backend/auth-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/auth-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
                 }
                 stage('Test user')   { 
-                    steps { 
-                        dir('backend/user-service') { sh 'npm test' } 
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, 
-                                  testResults: 'backend/user-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/user-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
                 }
                 stage('Test task')   { 
-                    steps { 
-                        dir('backend/task-service') { sh 'npm test' } 
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, 
-                                  testResults: 'backend/task-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/task-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
                 }
                 stage('Test project'){ 
-                    steps { 
-                        dir('backend/project-service') { sh 'npm test' } 
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, 
-                                  testResults: 'backend/project-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/project-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
                 }
                 stage('Test conge')  { 
-                    steps { 
-                        dir('backend/conge-service') { sh 'npm test' } 
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, 
-                                  testResults: 'backend/conge-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/conge-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
                 }
                 stage('Test notif')  { 
-                    steps { 
-                        dir('backend/notification-service') { sh 'npm test' } 
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, 
-                                  testResults: 'backend/notification-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/notification-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
                 }
             }
         }
@@ -152,10 +114,9 @@ pipeline {
         }
         failure {
             echo " Échec du pipeline — build #${env.BUILD_NUMBER}"
-            sh 'docker compose logs --tail=50'
         }
         always {
-            sh 'docker logout'
+            echo "Pipeline terminé — build #${env.BUILD_NUMBER}"
         }
     }
 }
