@@ -32,6 +32,18 @@ pipeline {
             }
         }
 
+        stage('Prepare MongoDB Binary') {
+            steps {
+                echo '=== Pré-téléchargement du binaire MongoDB ==='
+                dir('backend/auth-service') {
+                    sh '''
+                        node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); \
+                        MongoMemoryServer.create().then(s => { console.log('MongoDB binary OK'); s.stop(); })"
+                    '''
+                }
+            }
+        }
+
         stage('Tests') {
             failFast true
             parallel {

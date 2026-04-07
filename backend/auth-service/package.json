@@ -27,6 +27,7 @@
   } , 
   "jest": {
   "testEnvironment": "node",
+  "testTimeout": 30000,
   "reporters": ["default", "jest-junit"],
   "coverageThreshold": {
     "global": { "lines": 70 }
