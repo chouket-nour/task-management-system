@@ -29,5 +29,11 @@ app.use("/api/tasks",         makeProxy(TASK_SERVICE,    "/api/tasks"));
 app.use("/api/projects",      makeProxy(PROJECT_SERVICE, "/api/projects"));
 app.use("/api/conges",        makeProxy(CONGE_SERVICE,   "/api/conges"));
 app.use("/api/notifications", makeProxy(NOTIF_SERVICE,   "/api/notifications"));
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'UP',
+    service: 'api-gateway'
+  });
+});
 
 app.listen(5000, () => console.log("API Gateway running on port 5000"));
