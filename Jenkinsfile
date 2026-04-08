@@ -97,13 +97,16 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
-            steps {
-                echo '=== Déploiement ==='
-                sh 'docker-compose down --remove-orphans'
-                sh 'docker-compose up -d'
-            }
-        }
+      stage('Deploy') {
+    steps {
+        echo '=== Déploiement ==='
+        sh '''
+            docker-compose stop frontend api-gateway auth-service user-service task-service project-service conge-service notification-service mongodb
+            docker-compose rm -f frontend api-gateway auth-service user-service task-service project-service conge-service notification-service mongodb
+            docker-compose up -d frontend api-gateway auth-service user-service task-service project-service conge-service notification-service mongodb
+        '''
+    }
+}
 
         stage('Health Check') {
             steps {
