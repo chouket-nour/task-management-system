@@ -20,12 +20,6 @@ pipeline {
             }
         }
 
-        stage('Setup Docker') {
-            steps {
-                echo '=== Configuration Docker socket ==='
-                sh 'chmod 666 /var/run/docker.sock || true'
-            }
-        }
 
         stage('Install') {
             failFast true
