@@ -113,7 +113,7 @@ pipeline {
                 echo '=== Vérification des services ==='
                 sh '''
                     for i in $(seq 1 12); do
-                        curl -sf http://localhost:5000/health && echo " API OK" && exit 0
+                        curl -sf http://api-gateway:5000/health && echo " API OK" && exit 0
                         echo "Tentative $i/12 — attente 5s..."
                         sleep 5
                     done
