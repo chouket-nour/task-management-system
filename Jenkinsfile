@@ -20,6 +20,13 @@ pipeline {
             }
         }
 
+        stage('Setup Docker') {
+            steps {
+                echo '=== Configuration Docker socket ==='
+                sh 'chmod 666 /var/run/docker.sock || true'
+            }
+        }
+
         stage('Install') {
             failFast true
             parallel {
@@ -85,7 +92,14 @@ pipeline {
             steps {
                 echo '=== Push vers Docker Hub ==='
                 sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                sh 'docker-compose push'
+                sh 'docker-compose push auth-service'
+                sh 'docker-compose push user-service'
+                sh 'docker-compose push task-service'
+                sh 'docker-compose push project-service'
+                sh 'docker-compose push conge-service'
+                sh 'docker-compose push notification-service'
+                sh 'docker-compose push api-gateway'
+                sh 'docker-compose push frontend'
             }
         }
 
