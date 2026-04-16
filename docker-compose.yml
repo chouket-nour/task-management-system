@@ -15,7 +15,10 @@ services:
 
   # ── Auth Service ──
   auth-service:
-    build: ./backend/auth-service
+    build:
+      context: ./backend/auth-service
+      cache_from:
+        - nourchouket2000/rfc-auth-service:latest
     image: nourchouket2000/rfc-auth-service:${IMAGE_TAG:-latest}
     container_name: auth-service
     ports:
@@ -32,7 +35,10 @@ services:
 
   # ── User Service ──
   user-service:
-    build: ./backend/user-service
+    build:
+      context: ./backend/user-service
+      cache_from:
+        - nourchouket2000/rfc-user-service:latest
     image: nourchouket2000/rfc-user-service:${IMAGE_TAG:-latest}
     container_name: user-service
     ports:
@@ -48,7 +54,10 @@ services:
 
   # ── Task Service ──
   task-service:
-    build: ./backend/task-service
+    build:
+      context: ./backend/task-service
+      cache_from:
+        - nourchouket2000/rfc-task-service:latest
     image: nourchouket2000/rfc-task-service:${IMAGE_TAG:-latest}
     container_name: task-service
     ports:
@@ -66,7 +75,10 @@ services:
 
   # ── Project Service ──
   project-service:
-    build: ./backend/project-service
+    build:
+      context: ./backend/project-service
+      cache_from:
+        - nourchouket2000/rfc-project-service:latest
     image: nourchouket2000/rfc-project-service:${IMAGE_TAG:-latest}
     container_name: project-service
     ports:
@@ -82,7 +94,10 @@ services:
 
   # ── Conge Service ──
   conge-service:
-    build: ./backend/conge-service
+    build:
+      context: ./backend/conge-service
+      cache_from:
+        - nourchouket2000/rfc-conge-service:latest
     image: nourchouket2000/rfc-conge-service:${IMAGE_TAG:-latest}
     container_name: conge-service
     ports:
@@ -100,7 +115,10 @@ services:
 
   # ── Notification Service ──
   notification-service:
-    build: ./backend/notification-service
+    build:
+      context: ./backend/notification-service
+      cache_from:
+        - nourchouket2000/rfc-notification-service:latest
     image: nourchouket2000/rfc-notification-service:${IMAGE_TAG:-latest}
     container_name: notification-service
     ports:
@@ -116,7 +134,10 @@ services:
 
   # ── API Gateway ──
   api-gateway:
-    build: ./backend/api-gateway
+    build:
+      context: ./backend/api-gateway
+      cache_from:
+        - nourchouket2000/rfc-api-gateway:latest
     image: nourchouket2000/rfc-api-gateway:${IMAGE_TAG:-latest}
     container_name: api-gateway
     ports:
@@ -141,7 +162,10 @@ services:
 
   # ── Frontend ──
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      cache_from:
+        - nourchouket2000/rfc-frontend:latest
     image: nourchouket2000/rfc-frontend:${IMAGE_TAG:-latest}
     container_name: frontend
     ports:
