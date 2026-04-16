@@ -9,4 +9,7 @@ RUN apt-get update && \
     -o /usr/local/bin/docker-compose && \
     chmod +x /usr/local/bin/docker-compose
 
+RUN groupmod -o -g 999 docker && \
+    usermod -aG docker jenkins
+
 USER jenkins
