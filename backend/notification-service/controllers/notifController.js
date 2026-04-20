@@ -33,7 +33,7 @@ exports.markRead = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    const notif = await Notification.findByIdAndDelete(req.params.id); // ✅ vérifie existence
+    const notif = await Notification.findByIdAndDelete(req.params.id); // 
     if (!notif) return res.status(404).json({ message: "Notification non trouvée" });
     res.json({ message: "Deleted" });
   } catch (err) { res.status(500).json({ message: err.message }); }

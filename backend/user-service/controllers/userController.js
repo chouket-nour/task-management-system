@@ -1,4 +1,4 @@
-const mongoose   = require("mongoose"); // ✅ ajouté
+const mongoose   = require("mongoose"); 
 const User       = require("../models/UserProfile");
 const Attendance = require("../models/Attendance");
 
@@ -15,7 +15,7 @@ exports.getUser = async (req, res) => {
   try {
     let user = await User.findOne({ authId: req.params.id });
     if (!user) {
-      const isValidId = mongoose.Types.ObjectId.isValid(req.params.id); // ✅
+      const isValidId = mongoose.Types.ObjectId.isValid(req.params.id); 
       if (isValidId) user = await User.findById(req.params.id);
     }
     if (!user) return res.status(404).json({ message: "User not found" });
@@ -68,7 +68,7 @@ exports.checkIn = async (req, res) => {
   const { date, mode } = req.body;
   const userId = req.user.id;
   try {
-    const validModes = ["Sur site", "Télétravail", "Congé"]; // ✅ validation manuelle
+    const validModes = ["Sur site", "Télétravail", "Congé"]; // validation manuelle
     if (!validModes.includes(mode)) {
       return res.status(500).json({ message: "Mode invalide" });
     }
