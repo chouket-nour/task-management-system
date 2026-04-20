@@ -1,0 +1,13 @@
+# node_modules de tous les services
+backend/*/node_modules
+backend/*/coverage
+backend/*/junit.xml
+backend/*/tests
+frontend/node_modules
+frontend/build
+
+# Fichiers inutiles
+.git
+.env
+*.log
+npm-debug.log

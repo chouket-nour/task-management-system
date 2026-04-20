@@ -1,0 +1,8 @@
+node_modules
+npm-debug.log
+.env
+coverage
+junit.xml
+tests
+.nyc_output
+*.test.js
