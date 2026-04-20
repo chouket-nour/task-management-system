@@ -27,3 +27,4 @@ jest_0/
 .dockerignore
 docker-entrypoint.sh
 docker-entrypoint.yml
+docker-entrypoint.sh4
