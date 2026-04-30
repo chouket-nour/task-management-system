@@ -11,17 +11,10 @@ pipeline {
     }
 
     environment {
-        // ─── Credentials Docker Hub (vos credentials existants) ──────────────
-        DOCKER_USER = credentials('docker-username')
-        DOCKER_PASS = credentials('docker-password')
-
-        // ─── Registre Docker Hub (votre namespace réel) ───────────────────────
-        REGISTRY    = "nourchouket2000"
-
-        // ─── Versioning ───────────────────────────────────────────────────────
-        IMAGE_TAG   = "${env.BUILD_NUMBER}"
-
-        // ─── Liste centralisée des services ───────────────────────────────────
+        DOCKER_USER      = credentials('docker-username')
+        DOCKER_PASS      = credentials('docker-password')
+        REGISTRY         = "nourchouket2000"
+        IMAGE_TAG        = "${env.BUILD_NUMBER}"
         BACKEND_SERVICES = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
     }
 
@@ -31,7 +24,7 @@ pipeline {
         stage('Checkout') {
         // ─────────────────────────────────────────────
             steps {
-                echo '=== Récupération depuis GitHub ==='
+                echo '=== Recuperation depuis GitHub ==='
                 checkout scm
             }
         }
@@ -41,16 +34,14 @@ pipeline {
         // ─────────────────────────────────────────────
             steps {
                 script {
-                    // Git tag si disponible, sinon numéro de build
                     env.GIT_TAG   = sh(script: "git describe --tags --always || echo v0.0.0", returnStdout: true).trim()
                     env.IMAGE_TAG = "${env.GIT_TAG}-${env.BUILD_NUMBER}"
                 }
-                echo "🔖 Version : ${env.IMAGE_TAG}"
+                echo "Version : ${env.IMAGE_TAG}"
             }
         }
 
         // ─────────────────────────────────────────────
-    
         stage('Install') {
         // ─────────────────────────────────────────────
             failFast true
@@ -65,11 +56,10 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-     
         stage('Prepare MongoDB Binary') {
         // ─────────────────────────────────────────────
             steps {
-                echo '=== Pré-téléchargement du binaire MongoDB ==='
+                echo '=== Pre-telechargement du binaire MongoDB ==='
                 dir('backend/auth-service') {
                     sh '''
                         node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); \
@@ -80,7 +70,6 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-      
         stage('Tests') {
         // ─────────────────────────────────────────────
             failFast true
@@ -113,7 +102,6 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-        //  Analyse SonarQube via SonarScanner
         stage('SonarQube Analysis') {
         // ─────────────────────────────────────────────
             steps {
@@ -127,32 +115,38 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-        //  Quality Gate — pipeline bloqué si SonarQube échoue
+        // CORRECTION PRINCIPALE : timeout 15 min conserve (filet de securite)
+        // mais abortPipeline: false + verification manuelle du statut
+        // => le pipeline ne crashe plus si le webhook repond lentement
         stage('Quality Gate') {
         // ─────────────────────────────────────────────
             steps {
                 timeout(time: 15, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                    script {
+                        def qg = waitForQualityGate abortPipeline: false
+                        if (qg.status != 'OK') {
+                            error "Quality Gate FAILED : statut = ${qg.status} — voir http://192.168.1.20:9000/dashboard?id=rfc-connect"
+                        }
+                        echo "Quality Gate PASSED (statut : ${qg.status})"
+                    }
                 }
             }
         }
 
         // ─────────────────────────────────────────────
-    
         stage('Docker Login') {
         // ─────────────────────────────────────────────
             steps {
-                echo '=== Connexion à Docker Hub ==='
+                echo '=== Connexion a Docker Hub ==='
                 sh '''
                     echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin \
-                        || { echo " Docker login failed"; exit 1; }
-                    echo " Docker Hub login OK"
+                        || { echo "Docker login failed"; exit 1; }
+                    echo "Docker Hub login OK"
                 '''
             }
         }
 
         // ─────────────────────────────────────────────
-       
         stage('Build & Push Docker') {
         // ─────────────────────────────────────────────
             steps {
@@ -199,7 +193,6 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-        //  Scan Trivy sur TOUS les services 
         stage('Security Scan (Trivy)') {
         // ─────────────────────────────────────────────
             steps {
@@ -209,7 +202,7 @@ pipeline {
 
                     for (svc in services) {
                         sh """
-                            echo "🔍 Scan Trivy : ${svc}..."
+                            echo "Scan Trivy : ${svc}..."
                             trivy image --exit-code 1 --severity HIGH,CRITICAL \
                                 ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
                         """
@@ -219,8 +212,6 @@ pipeline {
         }
 
         // ─────────────────────────────────────────────
-        //  Deploy via docker-compose 
-        //    avec confirmation manuelle en prod 
         stage('Deploy') {
         // ─────────────────────────────────────────────
             when {
@@ -229,81 +220,73 @@ pipeline {
             steps {
                 script {
                     if (params.ENV == 'prod') {
-                        input message: " Confirmer le déploiement en PRODUCTION ?",
-                              ok: "Déployer"
+                        input message: "Confirmer le deploiement en PRODUCTION ?",
+                              ok: "Deployer"
                     }
                 }
-                echo '=== Déploiement ==='
+                echo '=== Deploiement ==='
                 sh """
-                    IMAGE_TAG=${IMAGE_TAG} docker-compose -f docker-compose.${params.ENV}.yml \
-                        pull
-                    IMAGE_TAG=${IMAGE_TAG} docker-compose -f docker-compose.${params.ENV}.yml \
-                        up -d --remove-orphans
+                    IMAGE_TAG=${IMAGE_TAG} docker-compose -f docker-compose.${params.ENV}.yml pull
+                    IMAGE_TAG=${IMAGE_TAG} docker-compose -f docker-compose.${params.ENV}.yml up -d --remove-orphans
                 """
             }
         }
 
         // ─────────────────────────────────────────────
-      
         stage('Rollback') {
         // ─────────────────────────────────────────────
             when {
                 expression { params.ROLLBACK == true }
             }
             steps {
-                echo ' Rollback vers la version précédente...'
+                echo 'Rollback vers la version precedente...'
                 sh """
                     IMAGE_TAG=\$(( ${IMAGE_TAG} - 1 )) \
-                    docker-compose -f docker-compose.${params.ENV}.yml \
-                        up -d --remove-orphans
+                    docker-compose -f docker-compose.${params.ENV}.yml up -d --remove-orphans
                 """
             }
         }
 
         // ─────────────────────────────────────────────
-        
         stage('Health Check') {
         // ─────────────────────────────────────────────
             when {
                 expression { params.ROLLBACK == false }
             }
             steps {
-                echo '=== Vérification des services ==='
+                echo '=== Verification des services ==='
                 sh '''
                     for i in $(seq 1 12); do
-                        curl -sf http://localhost:5000/health && echo " API OK" && exit 0
+                        curl -sf http://localhost:5000/health && echo "API OK" && exit 0
                         echo "Tentative $i/12 — attente 5s..."
                         sleep 5
                     done
-                    echo " Health check échoué après 60s"
+                    echo "Health check echoue apres 60s"
                     exit 1
                 '''
             }
         }
 
         // ─────────────────────────────────────────────
-      
         stage('Cleanup') {
         // ─────────────────────────────────────────────
             steps {
-                echo '=== Nettoyage Docker (images danglingues uniquement) ==='
+                echo '=== Nettoyage Docker ==='
                 sh 'docker image prune -f'
             }
         }
     }
 
-    // ─────────────────────────────────────────────
     post {
-    // ─────────────────────────────────────────────
         success {
-            echo " RFC Connect déployé avec succès — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}"
+            echo "RFC Connect deploye avec succes — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}"
         }
         failure {
-            echo " Échec du pipeline — build #${env.BUILD_NUMBER}"
+            echo "Echec du pipeline — build #${env.BUILD_NUMBER}"
             sh 'docker-compose logs --tail=50'
         }
         always {
-            echo "Pipeline terminé — build #${env.BUILD_NUMBER}"
+            echo "Pipeline termine — build #${env.BUILD_NUMBER}"
             cleanWs()
         }
     }
