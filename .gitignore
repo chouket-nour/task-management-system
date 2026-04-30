@@ -27,3 +27,6 @@ jest_0/
 docker-entrypoint.sh
 docker-entrypoint.yml
 docker-entrypoint.sh4
+
+#Terraform 
+*.tfvars
