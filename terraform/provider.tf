@@ -8,8 +8,11 @@ terraform {
 }
 
 provider "azurestack" {
+  metadata_host   = var.metadata_host
+  client_id       = var.client_id
+  client_secret   = var.secret_value
+  subscription_id = var.subscription_id
+  tenant_id       = var.tenant_id
+
   features {}
-  metadata_host   = "management.dc2.xpressazure.com"
-  subscription_id = "b55f73e9-9312-4a0a-b46b-44d350cf1fcc"
-  tenant_id       = "83815bfb-2605-4d45-be53-8066974eb65f"
 }
