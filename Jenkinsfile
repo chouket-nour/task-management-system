@@ -40,23 +40,6 @@ pipeline {
             }
         }
 
-        stage('Prepare MongoDB Binary') {
-            steps {
-                echo '=== Pre-telechargement du binaire MongoDB ==='
-                sh '''
-                    mkdir -p /var/jenkins_home/.cache/mongodb-binaries
-                    cd backend/auth-service
-                    node -e "
-                      const { MongoMemoryServer } = require('mongodb-memory-server');
-                      MongoMemoryServer.create().then(s => {
-                        console.log('Binaire MongoDB pret dans le cache');
-                        s.stop();
-                      });
-                    "
-                '''
-            }
-        }
-
         stage('Install') {
             failFast true
             parallel {
@@ -126,6 +109,23 @@ pipeline {
                         }
                     }
                 }
+            }
+        }
+
+        stage('Prepare MongoDB Binary') {
+            steps {
+                echo '=== Pre-telechargement du binaire MongoDB ==='
+                sh '''
+                    mkdir -p /var/jenkins_home/.cache/mongodb-binaries
+                    cd backend/auth-service
+                    node -e "
+                      const { MongoMemoryServer } = require('mongodb-memory-server');
+                      MongoMemoryServer.create().then(s => {
+                        console.log('Binaire MongoDB pret dans le cache');
+                        s.stop();
+                      });
+                    "
+                '''
             }
         }
 
