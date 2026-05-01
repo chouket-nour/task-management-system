@@ -6,6 +6,7 @@ services:
   mongodb:
     image: mongo:6
     container_name: mongodb
+    restart: always
     ports:
       - "27017:27017"
     volumes:
@@ -21,6 +22,7 @@ services:
         - nourchouket2000/rfc-auth-service:latest
     image: nourchouket2000/rfc-auth-service:${IMAGE_TAG:-latest}
     container_name: auth-service
+    restart: always
     ports:
       - "5001:5001"
     environment:
@@ -41,6 +43,7 @@ services:
         - nourchouket2000/rfc-user-service:latest
     image: nourchouket2000/rfc-user-service:${IMAGE_TAG:-latest}
     container_name: user-service
+    restart: always
     ports:
       - "5002:5002"
     environment:
@@ -60,6 +63,7 @@ services:
         - nourchouket2000/rfc-task-service:latest
     image: nourchouket2000/rfc-task-service:${IMAGE_TAG:-latest}
     container_name: task-service
+    restart: always
     ports:
       - "5003:5003"
     environment:
@@ -81,6 +85,7 @@ services:
         - nourchouket2000/rfc-project-service:latest
     image: nourchouket2000/rfc-project-service:${IMAGE_TAG:-latest}
     container_name: project-service
+    restart: always
     ports:
       - "5004:5004"
     environment:
@@ -100,6 +105,7 @@ services:
         - nourchouket2000/rfc-conge-service:latest
     image: nourchouket2000/rfc-conge-service:${IMAGE_TAG:-latest}
     container_name: conge-service
+    restart: always
     ports:
       - "5005:5005"
     environment:
@@ -121,6 +127,7 @@ services:
         - nourchouket2000/rfc-notification-service:latest
     image: nourchouket2000/rfc-notification-service:${IMAGE_TAG:-latest}
     container_name: notification-service
+    restart: always
     ports:
       - "5006:5006"
     environment:
@@ -140,6 +147,7 @@ services:
         - nourchouket2000/rfc-api-gateway:latest
     image: nourchouket2000/rfc-api-gateway:${IMAGE_TAG:-latest}
     container_name: api-gateway
+    restart: always
     ports:
       - "5000:5000"
     environment:
@@ -168,6 +176,7 @@ services:
         - nourchouket2000/rfc-frontend:latest
     image: nourchouket2000/rfc-frontend:${IMAGE_TAG:-latest}
     container_name: frontend
+    restart: always
     ports:
       - "80:80"
     depends_on:
@@ -181,6 +190,7 @@ services:
       context: .
       dockerfile: Dockerfile.jenkins
     container_name: jenkins
+    restart: always
     user: root
     ports:
       - "8080:8080"
@@ -188,6 +198,22 @@ services:
     volumes:
       - jenkins_data:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - rfc-network
+
+  # ── SonarQube ──
+  sonarqube:
+    image: sonarqube:community
+    container_name: sonarqube
+    restart: always
+    ports:
+      - "9000:9000"
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
     networks:
       - rfc-network
 
@@ -200,3 +226,6 @@ networks:
 volumes:
   mongo_data:
   jenkins_data:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
