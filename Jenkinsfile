@@ -8,6 +8,7 @@ pipeline {
     parameters {
         choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Environnement cible')
         booleanParam(name: 'ROLLBACK', defaultValue: false, description: 'Rollback manuel vers la révision précédente')
+        booleanParam(name: 'SKIP_DOCKER', defaultValue: false, description: 'Passer le build Docker')
     }
 
     environment {
@@ -17,6 +18,7 @@ pipeline {
         NPM_CONFIG_CACHE            = "/var/jenkins_home/.npm-cache"
         MONGOMS_DOWNLOAD_DIR        = "/var/jenkins_home/.cache/mongodb-binaries"
         MONGOMS_DISABLE_POSTINSTALL = "1"
+        DOCKER_BUILDKIT             = "1"
     }
 
     stages {
@@ -47,9 +49,7 @@ pipeline {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
-                                dir('backend/auth-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
+                                dir('backend/auth-service') { sh 'npm ci --prefer-offline' }
                             }
                         }
                     }
@@ -58,9 +58,7 @@ pipeline {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
-                                dir('backend/user-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
+                                dir('backend/user-service') { sh 'npm ci --prefer-offline' }
                             }
                         }
                     }
@@ -69,9 +67,7 @@ pipeline {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
-                                dir('backend/task-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
+                                dir('backend/task-service') { sh 'npm ci --prefer-offline' }
                             }
                         }
                     }
@@ -80,9 +76,7 @@ pipeline {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
-                                dir('backend/project-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
+                                dir('backend/project-service') { sh 'npm ci --prefer-offline' }
                             }
                         }
                     }
@@ -91,9 +85,7 @@ pipeline {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
-                                dir('backend/conge-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
+                                dir('backend/conge-service') { sh 'npm ci --prefer-offline' }
                             }
                         }
                     }
@@ -102,9 +94,7 @@ pipeline {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
-                                dir('backend/notification-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
+                                dir('backend/notification-service') { sh 'npm ci --prefer-offline' }
                             }
                         }
                     }
@@ -185,6 +175,9 @@ pipeline {
         }
 
         stage('Docker Login') {
+            when {
+                expression { params.SKIP_DOCKER == false }
+            }
             steps {
                 withCredentials([
                     string(credentialsId: 'docker-username', variable: 'DOCKER_USER'),
@@ -200,77 +193,216 @@ pipeline {
         }
 
         stage('Build & Push Docker') {
-            steps {
-                sh """
-                    docker pull ${REGISTRY}/rfc-auth-service:latest         || true
-                    docker pull ${REGISTRY}/rfc-user-service:latest         || true
-                    docker pull ${REGISTRY}/rfc-task-service:latest         || true
-                    docker pull ${REGISTRY}/rfc-project-service:latest      || true
-                    docker pull ${REGISTRY}/rfc-conge-service:latest        || true
-                    docker pull ${REGISTRY}/rfc-notification-service:latest || true
-                    docker pull ${REGISTRY}/rfc-api-gateway:latest          || true
-                    docker pull ${REGISTRY}/rfc-frontend:latest             || true
-                """
-                script {
-                    def services = [
-                        'auth-service', 'user-service', 'task-service',
-                        'project-service', 'conge-service',
-                        'notification-service', 'api-gateway'
-                    ]
-                    for (svc in services) {
-                        def currentSvc = svc
+            when {
+                expression { params.SKIP_DOCKER == false }
+            }
+            parallel {
+                stage('Build auth') {
+                    steps {
                         retry(3) {
                             sh """
                                 docker build \\
-                                    --cache-from ${REGISTRY}/rfc-${currentSvc}:latest \\
-                                    --tag        ${REGISTRY}/rfc-${currentSvc}:${IMAGE_TAG} \\
-                                    --tag        ${REGISTRY}/rfc-${currentSvc}:latest \\
-                                    ./backend/${currentSvc}
-                                docker push ${REGISTRY}/rfc-${currentSvc}:${IMAGE_TAG}
-                                docker push ${REGISTRY}/rfc-${currentSvc}:latest
+                                    --cache-from ${REGISTRY}/rfc-auth-service:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-auth-service:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-auth-service:latest \\
+                                    ./backend/auth-service
+                                docker push ${REGISTRY}/rfc-auth-service:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-auth-service:latest
                             """
                         }
                     }
                 }
-                retry(3) {
-                    sh """
-                        docker build \\
-                            --cache-from ${REGISTRY}/rfc-frontend:latest \\
-                            --tag        ${REGISTRY}/rfc-frontend:${IMAGE_TAG} \\
-                            --tag        ${REGISTRY}/rfc-frontend:latest \\
-                            ./frontend
-                        docker push ${REGISTRY}/rfc-frontend:${IMAGE_TAG}
-                        docker push ${REGISTRY}/rfc-frontend:latest
-                    """
+                stage('Build user') {
+                    steps {
+                        retry(3) {
+                            sh """
+                                docker build \\
+                                    --cache-from ${REGISTRY}/rfc-user-service:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-user-service:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-user-service:latest \\
+                                    ./backend/user-service
+                                docker push ${REGISTRY}/rfc-user-service:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-user-service:latest
+                            """
+                        }
+                    }
+                }
+                stage('Build task') {
+                    steps {
+                        retry(3) {
+                            sh """
+                                docker build \\
+                                    --cache-from ${REGISTRY}/rfc-task-service:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-task-service:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-task-service:latest \\
+                                    ./backend/task-service
+                                docker push ${REGISTRY}/rfc-task-service:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-task-service:latest
+                            """
+                        }
+                    }
+                }
+                stage('Build project') {
+                    steps {
+                        retry(3) {
+                            sh """
+                                docker build \\
+                                    --cache-from ${REGISTRY}/rfc-project-service:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-project-service:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-project-service:latest \\
+                                    ./backend/project-service
+                                docker push ${REGISTRY}/rfc-project-service:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-project-service:latest
+                            """
+                        }
+                    }
+                }
+                stage('Build conge') {
+                    steps {
+                        retry(3) {
+                            sh """
+                                docker build \\
+                                    --cache-from ${REGISTRY}/rfc-conge-service:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-conge-service:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-conge-service:latest \\
+                                    ./backend/conge-service
+                                docker push ${REGISTRY}/rfc-conge-service:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-conge-service:latest
+                            """
+                        }
+                    }
+                }
+                stage('Build notif') {
+                    steps {
+                        retry(3) {
+                            sh """
+                                docker build \\
+                                    --cache-from ${REGISTRY}/rfc-notification-service:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-notification-service:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-notification-service:latest \\
+                                    ./backend/notification-service
+                                docker push ${REGISTRY}/rfc-notification-service:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-notification-service:latest
+                            """
+                        }
+                    }
+                }
+                stage('Build gateway') {
+                    steps {
+                        retry(3) {
+                            sh """
+                                docker build \\
+                                    --cache-from ${REGISTRY}/rfc-api-gateway:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-api-gateway:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-api-gateway:latest \\
+                                    ./backend/api-gateway
+                                docker push ${REGISTRY}/rfc-api-gateway:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-api-gateway:latest
+                            """
+                        }
+                    }
+                }
+                stage('Build frontend') {
+                    steps {
+                        retry(3) {
+                            sh """
+                                docker build \\
+                                    --cache-from ${REGISTRY}/rfc-frontend:latest \\
+                                    --build-arg BUILDKIT_INLINE_CACHE=1 \\
+                                    --tag ${REGISTRY}/rfc-frontend:${IMAGE_TAG} \\
+                                    --tag ${REGISTRY}/rfc-frontend:latest \\
+                                    ./frontend
+                                docker push ${REGISTRY}/rfc-frontend:${IMAGE_TAG}
+                                docker push ${REGISTRY}/rfc-frontend:latest
+                            """
+                        }
+                    }
                 }
             }
         }
 
-        // ─── TRIVY CORRIGE ───────────────────────────────────────────
-        // --ignore-unfixed  : ignore les CVE sans fix disponible
-        // --skip-dirs npm   : ignore les CVE dans npm lui-meme
-        // || true           : warning seulement, ne bloque pas le pipeline
-        // ─────────────────────────────────────────────────────────────
         stage('Security Scan (Trivy)') {
-            steps {
-                script {
-                    def services = env.BACKEND_SERVICES.split(',').toList()
-                    services.add('frontend')
-                    for (svc in services) {
-                        def currentSvc = svc
-                        retry(2) {
-                            sh """
-                                echo "=== Scan Trivy : ${currentSvc} ==="
-                                trivy image \
-                                    --exit-code 1 \
-                                    --severity HIGH,CRITICAL \
-                                    --ignore-unfixed \
-                                    --skip-dirs /usr/local/lib/node_modules/npm \
-                                    --skip-dirs /opt/yarn-v1.22.22 \
-                                    --scanners vuln \
-                                    ${REGISTRY}/rfc-${currentSvc}:${IMAGE_TAG} || true
-                            """
-                        }
+            when {
+                expression { params.SKIP_DOCKER == false }
+            }
+            parallel {
+                stage('Trivy auth') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-auth-service:${IMAGE_TAG}
+                        """
+                    }
+                }
+                stage('Trivy user') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-user-service:${IMAGE_TAG}
+                        """
+                    }
+                }
+                stage('Trivy task') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-task-service:${IMAGE_TAG}
+                        """
+                    }
+                }
+                stage('Trivy project') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-project-service:${IMAGE_TAG}
+                        """
+                    }
+                }
+                stage('Trivy conge') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-conge-service:${IMAGE_TAG}
+                        """
+                    }
+                }
+                stage('Trivy notif') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-notification-service:${IMAGE_TAG}
+                        """
+                    }
+                }
+                stage('Trivy gateway') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-api-gateway:${IMAGE_TAG}
+                        """
+                    }
+                }
+                stage('Trivy frontend') {
+                    steps {
+                        sh """
+                            trivy image --exit-code 0 --severity HIGH,CRITICAL \
+                                --ignore-unfixed --scanners vuln \
+                                ${REGISTRY}/rfc-frontend:${IMAGE_TAG}
+                        """
                     }
                 }
             }
@@ -296,8 +428,7 @@ pipeline {
             steps {
                 echo "Rollback vers : ${env.PREV_TAG}"
                 sh """
-                    IMAGE_TAG=${env.PREV_TAG} \
-                    docker-compose -f docker-compose.${params.ENV}.yml up -d --remove-orphans
+                    IMAGE_TAG=${env.PREV_TAG} docker-compose -f docker-compose.${params.ENV}.yml up -d --remove-orphans
                 """
             }
         }
@@ -330,12 +461,10 @@ pipeline {
         }
         failure {
             echo "Echec — build #${env.BUILD_NUMBER}"
-            // Les logs docker-compose AVANT cleanWs
             sh "docker-compose -f docker-compose.${params.ENV}.yml logs --tail=50 || true"
         }
         always {
             echo "Pipeline termine — build #${env.BUILD_NUMBER}"
-            // cleanWs EN DERNIER
             cleanWs()
         }
     }
