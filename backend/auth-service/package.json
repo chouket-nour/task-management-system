@@ -9,6 +9,12 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "overrides": {
+    "tar": "^7.5.11",
+    "minimatch": "^9.0.7",
+    "cross-spawn": "^7.0.5",
+    "glob": "^10.5.0"
+  },
   "dependencies": {
     "axios": "^1.13.6",
     "bcryptjs": "^3.0.3",
@@ -30,7 +36,7 @@
     "testTimeout": 30000,
     "reporters": ["default", "jest-junit"],
     "coverageThreshold": {
-      "global": { "lines": 70 }
+      "global": { "lines": 80 }
     }
   },
   "mongodbMemoryServer": {

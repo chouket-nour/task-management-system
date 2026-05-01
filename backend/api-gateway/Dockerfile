@@ -1,10 +1,24 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 RUN apk update && apk upgrade --no-cache
 
 WORKDIR /app
+
+
 COPY package*.json ./
-RUN npm install --production
+
+RUN npm ci --only=production
+
+#  Correction des packages vulnérables
+RUN npm install \
+    tar@^7.5.11 \
+    minimatch@^9.0.7 \
+    cross-spawn@^7.0.5 \
+    glob@^10.5.0 \
+    --save-exact
+
 COPY . .
+
 EXPOSE 5000
+
 CMD ["node", "server.js"]
