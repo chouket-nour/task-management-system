@@ -25,11 +25,16 @@
     "supertest": "^7.2.2"
   },
   "jest": {
-  "testEnvironment": "node",
-  "testTimeout": 30000,
-  "reporters": ["default", "jest-junit"],
-  "coverageThreshold": {
-    "global": { "lines": 70 }
+    "testEnvironment": "node",
+    "testTimeout": 30000,
+    "reporters": ["default", "jest-junit"],
+    "coverageThreshold": {
+      "global": { "lines": 70 }
+    }
+  },
+  "mongodbMemoryServer": {
+    "downloadDir": "/var/jenkins_home/.cache/mongodb-binaries",
+    "version": "7.0.14",
+    "skipMD5": true
   }
-}
 }
