@@ -2,7 +2,6 @@ jest.mock("axios");
 const axios = require("axios");
 axios.post.mockResolvedValue({ data: { success: true } });
 
-// Le reste du fichier identique
 const { MongoMemoryServer } = require("mongodb-memory-server");
 const mongoose = require("mongoose");
 const request  = require("supertest");

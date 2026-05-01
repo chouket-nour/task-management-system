@@ -13,7 +13,7 @@ const bcrypt         = require("bcryptjs");
 const jwt            = require("jsonwebtoken");
 const axios          = require("axios");
 
-// 🔐 JWT
+// JWT
 beforeAll(() => {
   process.env.JWT_SECRET = "testsecret";
 });
