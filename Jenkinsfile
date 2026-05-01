@@ -11,26 +11,24 @@ pipeline {
     }
 
     environment {
-        REGISTRY         = "nourchouket2000"
-        IMAGE_TAG        = "${env.BUILD_NUMBER}"
-        BACKEND_SERVICES = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
-        NPM_CONFIG_CACHE = "/var/jenkins_home/.npm-cache"
+        REGISTRY                    = "nourchouket2000"
+        IMAGE_TAG                   = "${env.BUILD_NUMBER}"
+        BACKEND_SERVICES            = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
+        NPM_CONFIG_CACHE            = "/var/jenkins_home/.npm-cache"
+        MONGOMS_DOWNLOAD_DIR        = "/var/jenkins_home/.cache/mongodb-binaries"
+        MONGOMS_DISABLE_POSTINSTALL = "1"
     }
 
     stages {
 
-        // ─────────────────────────────────────────────
         stage('Checkout') {
-        // ─────────────────────────────────────────────
             steps {
                 echo '=== Recuperation depuis GitHub ==='
                 checkout scm
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Init Versioning') {
-        // ─────────────────────────────────────────────
             steps {
                 script {
                     env.GIT_TAG   = sh(script: "git describe --tags --always || echo v0.0.0", returnStdout: true).trim()
@@ -42,14 +40,29 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
+        stage('Prepare MongoDB Binary') {
+            steps {
+                echo '=== Pre-telechargement du binaire MongoDB ==='
+                sh '''
+                    mkdir -p /var/jenkins_home/.cache/mongodb-binaries
+                    cd backend/auth-service
+                    node -e "
+                      const { MongoMemoryServer } = require('mongodb-memory-server');
+                      MongoMemoryServer.create().then(s => {
+                        console.log('Binaire MongoDB pret dans le cache');
+                        s.stop();
+                      });
+                    "
+                '''
+            }
+        }
+
         stage('Install') {
-        // ─────────────────────────────────────────────
             failFast true
             parallel {
                 stage('auth') {
                     steps {
-                        timeout(time: 5, unit: 'MINUTES') {
+                        timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
                                 dir('backend/auth-service') {
                                     sh 'npm ci --prefer-offline'
@@ -60,7 +73,7 @@ pipeline {
                 }
                 stage('user') {
                     steps {
-                        timeout(time: 5, unit: 'MINUTES') {
+                        timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
                                 dir('backend/user-service') {
                                     sh 'npm ci --prefer-offline'
@@ -71,7 +84,7 @@ pipeline {
                 }
                 stage('task') {
                     steps {
-                        timeout(time: 5, unit: 'MINUTES') {
+                        timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
                                 dir('backend/task-service') {
                                     sh 'npm ci --prefer-offline'
@@ -82,7 +95,7 @@ pipeline {
                 }
                 stage('project') {
                     steps {
-                        timeout(time: 5, unit: 'MINUTES') {
+                        timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
                                 dir('backend/project-service') {
                                     sh 'npm ci --prefer-offline'
@@ -93,7 +106,7 @@ pipeline {
                 }
                 stage('conge') {
                     steps {
-                        timeout(time: 5, unit: 'MINUTES') {
+                        timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
                                 dir('backend/conge-service') {
                                     sh 'npm ci --prefer-offline'
@@ -104,7 +117,7 @@ pipeline {
                 }
                 stage('notif') {
                     steps {
-                        timeout(time: 5, unit: 'MINUTES') {
+                        timeout(time: 10, unit: 'MINUTES') {
                             retry(2) {
                                 dir('backend/notification-service') {
                                     sh 'npm ci --prefer-offline'
@@ -116,23 +129,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
-        stage('Prepare MongoDB Binary') {
-        // ─────────────────────────────────────────────
-            steps {
-                echo '=== Pre-telechargement du binaire MongoDB ==='
-                dir('backend/auth-service') {
-                    sh '''
-                        node -e "const { MongoMemoryServer } = require('mongodb-memory-server'); \
-                        MongoMemoryServer.create().then(s => { console.log('MongoDB binary OK'); s.stop(); })"
-                    '''
-                }
-            }
-        }
-
-        // ─────────────────────────────────────────────
         stage('Tests') {
-        // ─────────────────────────────────────────────
             failFast true
             parallel {
                 stage('Test auth') {
@@ -162,9 +159,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('SonarQube Analysis') {
-        // ─────────────────────────────────────────────
             steps {
                 withSonarQubeEnv('SonarQube') {
                     script {
@@ -175,9 +170,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Quality Gate') {
-        // ─────────────────────────────────────────────
             steps {
                 timeout(time: 15, unit: 'MINUTES') {
                     script {
@@ -191,9 +184,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Docker Login') {
-        // ─────────────────────────────────────────────
             steps {
                 echo '=== Connexion a Docker Hub ==='
                 withCredentials([
@@ -209,9 +200,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Build & Push Docker') {
-        // ─────────────────────────────────────────────
             steps {
                 echo '=== Pull cache des images latest ==='
                 sh """
@@ -271,9 +260,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Security Scan (Trivy)') {
-        // ─────────────────────────────────────────────
             steps {
                 script {
                     def services = env.BACKEND_SERVICES.split(',').toList()
@@ -293,9 +280,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Deploy') {
-        // ─────────────────────────────────────────────
             when {
                 expression { params.ROLLBACK == false }
             }
@@ -314,9 +299,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Rollback') {
-        // ─────────────────────────────────────────────
             when {
                 expression { params.ROLLBACK == true }
             }
@@ -328,9 +311,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Health Check') {
-        // ─────────────────────────────────────────────
             when {
                 expression { params.ROLLBACK == false }
             }
@@ -348,9 +329,7 @@ pipeline {
             }
         }
 
-        // ─────────────────────────────────────────────
         stage('Cleanup') {
-        // ─────────────────────────────────────────────
             steps {
                 echo '=== Nettoyage Docker ==='
                 sh 'docker image prune -f'
