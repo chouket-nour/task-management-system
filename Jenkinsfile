@@ -27,6 +27,8 @@ pipeline {
             steps {
                 echo '=== Recuperation depuis GitHub ==='
                 checkout scm
+                sh 'node --version'
+                sh 'npm --version'
             }
         }
 
