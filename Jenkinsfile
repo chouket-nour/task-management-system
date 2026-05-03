@@ -22,7 +22,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo '=== Récupération depuis GitHub ==='
+                echo '=== Recuperation depuis GitHub ==='
                 checkout scm
                 sh 'node --version && npm --version'
             }
@@ -36,19 +36,67 @@ pipeline {
                     env.PREV_TAG  = "${env.GIT_TAG}-${(env.BUILD_NUMBER.toInteger() - 1).toString()}"
                 }
                 echo "Version courante  : ${env.IMAGE_TAG}"
-                echo "Version précédente: ${env.PREV_TAG}"
+                echo "Version precedente: ${env.PREV_TAG}"
             }
         }
 
         stage('Install') {
             failFast true
             parallel {
-                stage('auth')    { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/auth-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('user')    { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/user-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('task')    { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/task-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('project') { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/project-service')      { sh 'npm ci --prefer-offline' } } } } }
-                stage('conge')   { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/conge-service')        { sh 'npm ci --prefer-offline' } } } } }
-                stage('notif')   { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } } } } }
+                stage('auth') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/auth-service') { sh 'npm ci --prefer-offline' }
+                            }
+                        }
+                    }
+                }
+                stage('user') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/user-service') { sh 'npm ci --prefer-offline' }
+                            }
+                        }
+                    }
+                }
+                stage('task') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/task-service') { sh 'npm ci --prefer-offline' }
+                            }
+                        }
+                    }
+                }
+                stage('project') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/project-service') { sh 'npm ci --prefer-offline' }
+                            }
+                        }
+                    }
+                }
+                stage('conge') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/conge-service') { sh 'npm ci --prefer-offline' }
+                            }
+                        }
+                    }
+                }
+                stage('notif') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/notification-service') { sh 'npm ci --prefer-offline' }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -59,7 +107,10 @@ pipeline {
                     cd backend/auth-service
                     node -e "
                       const { MongoMemoryServer } = require('mongodb-memory-server');
-                      MongoMemoryServer.create().then(s => { console.log('MongoDB binaire prêt'); s.stop(); });
+                      MongoMemoryServer.create().then(s => {
+                        console.log('Binaire MongoDB pret');
+                        s.stop();
+                      });
                     "
                 '''
             }
@@ -68,12 +119,66 @@ pipeline {
         stage('Tests') {
             failFast true
             parallel {
-                stage('Test auth')    { steps { dir('backend/auth-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } } }
-                stage('Test user')    { steps { dir('backend/user-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } } }
-                stage('Test task')    { steps { dir('backend/task-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } } }
-                stage('Test project') { steps { dir('backend/project-service')      { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } } }
-                stage('Test conge')   { steps { dir('backend/conge-service')        { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } } }
-                stage('Test notif')   { steps { dir('backend/notification-service') { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } } }
+                stage('Test auth') {
+                    steps {
+                        dir('backend/auth-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test user') {
+                    steps {
+                        dir('backend/user-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test task') {
+                    steps {
+                        dir('backend/task-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test project') {
+                    steps {
+                        dir('backend/project-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test conge') {
+                    steps {
+                        dir('backend/conge-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test notif') {
+                    steps {
+                        dir('backend/notification-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml'
+                        }
+                    }
+                }
             }
         }
 
@@ -115,12 +220,10 @@ pipeline {
             }
         }
 
-        // ─── FIX PRINCIPAL : Build en parallèle → Push séquentiel ───────────
-        stage('Build Docker (parallèle)') {
+        stage('Build Docker') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
                 script {
-                    // Créer le builder une seule fois
                     sh '''
                         docker buildx create --use --name rfc-builder \
                             --driver-opt network=host 2>/dev/null || \
@@ -138,8 +241,6 @@ pipeline {
 
                         buildStages["Build ${svc}"] = {
                             retry(2) {
-                                // ✅ FIX 1 : --output type=docker — build local SANS push
-                                // ✅ FIX 3 : plus de --cache-to (inutile, cause les 400)
                                 sh """
                                     docker buildx build \
                                         --builder rfc-builder \
@@ -158,15 +259,13 @@ pipeline {
             }
         }
 
-        stage('Push Docker (séquentiel)') {
+        stage('Push Docker') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
                 script {
                     def services = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
 
-                    // ✅ FIX 2 : push séquentiel — une image à la fois
-                    // Chaque push dure < 5 min → session Docker Hub jamais expirée
                     services.each { service ->
                         def svc = service.trim()
                         retry(3) {
@@ -212,7 +311,7 @@ pipeline {
             steps {
                 script {
                     if (params.ENV == 'prod') {
-                        input message: "Confirmer le déploiement en PRODUCTION ?", ok: "Déployer"
+                        input message: "Confirmer le deploiement en PRODUCTION ?", ok: "Deployer"
                     }
                 }
                 sh """
@@ -239,7 +338,7 @@ pipeline {
                         echo "Tentative $i/12 — attente 5s..."
                         sleep 5
                     done
-                    echo "Health check échoué après 60s"
+                    echo "Health check echoue apres 60s"
                     exit 1
                 '''
             }
@@ -256,13 +355,15 @@ pipeline {
     }
 
     post {
-        success { echo "RFC Connect déployé — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}" }
+        success {
+            echo "RFC Connect deploye — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}"
+        }
         failure {
-            echo "Échec — build #${env.BUILD_NUMBER}"
+            echo "Echec — build #${env.BUILD_NUMBER}"
             sh "docker-compose -f docker-compose.yml logs --tail=50 || true"
         }
         always {
-            echo "Pipeline terminé — build #${env.BUILD_NUMBER}"
+            echo "Pipeline termine — build #${env.BUILD_NUMBER}"
             cleanWs()
         }
     }
