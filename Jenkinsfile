@@ -1,17 +1,10 @@
 pipeline {
     agent any
-
     tools { nodejs 'NodeJS' }
-
-    options {
-        timeout(time: 120, unit: 'MINUTES')
-        disableConcurrentBuilds()
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-    }
 
     parameters {
         choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Environnement cible')
-        booleanParam(name: 'ROLLBACK', defaultValue: false, description: 'Rollback manuel')
+        booleanParam(name: 'ROLLBACK',    defaultValue: false, description: 'Rollback manuel')
         booleanParam(name: 'SKIP_DOCKER', defaultValue: false, description: 'Passer le build Docker')
     }
 
@@ -29,7 +22,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo '=== Recuperation depuis GitHub ==='
+                echo '=== Récupération depuis GitHub ==='
                 checkout scm
                 sh 'node --version && npm --version'
             }
@@ -43,19 +36,19 @@ pipeline {
                     env.PREV_TAG  = "${env.GIT_TAG}-${(env.BUILD_NUMBER.toInteger() - 1).toString()}"
                 }
                 echo "Version courante  : ${env.IMAGE_TAG}"
-                echo "Version precedente: ${env.PREV_TAG}"
+                echo "Version précédente: ${env.PREV_TAG}"
             }
         }
 
         stage('Install') {
             failFast true
             parallel {
-                stage('auth')    { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/auth-service')        { sh 'npm ci --prefer-offline' } } } } }
-                stage('user')    { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/user-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('task')    { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/task-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('project') { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/project-service')      { sh 'npm ci --prefer-offline' } } } } }
-                stage('conge')   { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/conge-service')        { sh 'npm ci --prefer-offline' } } } } }
-                stage('notif')   { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } } } } }
+                stage('auth')    { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/auth-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('user')    { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/user-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('task')    { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/task-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('project') { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/project-service')      { sh 'npm ci --prefer-offline' } } } } }
+                stage('conge')   { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/conge-service')        { sh 'npm ci --prefer-offline' } } } } }
+                stage('notif')   { steps { timeout(10, 'MINUTES') { retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } } } } }
             }
         }
 
@@ -66,10 +59,7 @@ pipeline {
                     cd backend/auth-service
                     node -e "
                       const { MongoMemoryServer } = require('mongodb-memory-server');
-                      MongoMemoryServer.create().then(s => {
-                        console.log('MongoDB binary ready');
-                        s.stop();
-                      });
+                      MongoMemoryServer.create().then(s => { console.log('MongoDB binaire prêt'); s.stop(); });
                     "
                 '''
             }
@@ -78,7 +68,7 @@ pipeline {
         stage('Tests') {
             failFast true
             parallel {
-                stage('Test auth')    { steps { dir('backend/auth-service')        { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } } }
+                stage('Test auth')    { steps { dir('backend/auth-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } } }
                 stage('Test user')    { steps { dir('backend/user-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } } }
                 stage('Test task')    { steps { dir('backend/task-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } } }
                 stage('Test project') { steps { dir('backend/project-service')      { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } } }
@@ -103,9 +93,8 @@ pipeline {
                 timeout(time: 15, unit: 'MINUTES') {
                     script {
                         def qg = waitForQualityGate abortPipeline: false
-                        if (qg.status != 'OK') {
-                            error "Quality Gate FAILED : ${qg.status}"
-                        }
+                        if (qg.status != 'OK') { error "Quality Gate FAILED : ${qg.status}" }
+                        echo "Quality Gate PASSED"
                     }
                 }
             }
@@ -119,34 +108,70 @@ pipeline {
                     string(credentialsId: 'docker-password', variable: 'DOCKER_PASS')
                 ]) {
                     sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin \
-                            || { echo "Docker login failed"; exit 1; }
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         echo "Docker Hub login OK"
                     '''
                 }
             }
         }
 
+        // ─── FIX PRINCIPAL : Build en parallèle → Push séquentiel ───────────
+        stage('Build Docker (parallèle)') {
+            when { expression { params.SKIP_DOCKER == false } }
+            steps {
+                script {
+                    // Créer le builder une seule fois
+                    sh '''
+                        docker buildx create --use --name rfc-builder \
+                            --driver-opt network=host 2>/dev/null || \
+                        docker buildx use rfc-builder
+                        docker buildx inspect --bootstrap
+                    '''
 
-        stage('Build & Push Docker') {
+                    def services = env.BACKEND_SERVICES.split(',').toList()
+                    services.add('frontend')
+
+                    def buildStages = [:]
+                    services.each { service ->
+                        def svc     = service.trim()
+                        def context = (svc == 'frontend') ? './frontend' : "./backend/${svc}"
+
+                        buildStages["Build ${svc}"] = {
+                            retry(2) {
+                                // ✅ FIX 1 : --output type=docker — build local SANS push
+                                // ✅ FIX 3 : plus de --cache-to (inutile, cause les 400)
+                                sh """
+                                    docker buildx build \
+                                        --builder rfc-builder \
+                                        --platform linux/amd64 \
+                                        --cache-from type=registry,ref=${REGISTRY}/rfc-${svc}:cache \
+                                        --tag ${REGISTRY}/rfc-${svc}:${IMAGE_TAG} \
+                                        --tag ${REGISTRY}/rfc-${svc}:latest \
+                                        --load \
+                                        ${context}
+                                """
+                            }
+                        }
+                    }
+                    parallel buildStages
+                }
+            }
+        }
+
+        stage('Push Docker (séquentiel)') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
                 script {
                     def services = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
 
+                    // ✅ FIX 2 : push séquentiel — une image à la fois
+                    // Chaque push dure < 5 min → session Docker Hub jamais expirée
                     services.each { service ->
-                        def svc     = service.trim()
-                        def context = (svc == 'frontend') ? './frontend' : "./backend/${svc}"
-
-                        echo "=== Build + Push : ${svc} ==="
+                        def svc = service.trim()
                         retry(3) {
                             sh """
-                                docker build \
-                                    --tag ${REGISTRY}/rfc-${svc}:${IMAGE_TAG} \
-                                    --tag ${REGISTRY}/rfc-${svc}:latest \
-                                    ${context}
-
+                                echo "=== Push ${svc} ==="
                                 docker push ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
                                 docker push ${REGISTRY}/rfc-${svc}:latest
                             """
@@ -163,17 +188,21 @@ pipeline {
                     def services = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
 
+                    def trivyStages = [:]
                     services.each { service ->
                         def svc = service.trim()
-                        sh """
-                            trivy image \
-                                --exit-code 0 \
-                                --severity HIGH,CRITICAL \
-                                --ignore-unfixed \
-                                --scanners vuln \
-                                ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
-                        """
+                        trivyStages["Trivy ${svc}"] = {
+                            sh """
+                                trivy image \
+                                    --exit-code 0 \
+                                    --severity HIGH,CRITICAL \
+                                    --ignore-unfixed \
+                                    --scanners vuln \
+                                    ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
+                            """
+                        }
                     }
+                    parallel trivyStages
                 }
             }
         }
@@ -183,7 +212,7 @@ pipeline {
             steps {
                 script {
                     if (params.ENV == 'prod') {
-                        input message: "Confirmer le deploiement en PRODUCTION ?", ok: "Deployer"
+                        input message: "Confirmer le déploiement en PRODUCTION ?", ok: "Déployer"
                     }
                 }
                 sh """
@@ -210,7 +239,7 @@ pipeline {
                         echo "Tentative $i/12 — attente 5s..."
                         sleep 5
                     done
-                    echo "Health check echoue apres 60s"
+                    echo "Health check échoué après 60s"
                     exit 1
                 '''
             }
@@ -218,21 +247,22 @@ pipeline {
 
         stage('Cleanup') {
             steps {
-                sh 'docker image prune -f'
+                sh '''
+                    docker buildx rm rfc-builder 2>/dev/null || true
+                    docker image prune -f
+                '''
             }
         }
     }
 
     post {
-        success {
-            echo " RFC Connect deploye — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}"
-        }
+        success { echo "RFC Connect déployé — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}" }
         failure {
-            echo " Echec — build #${env.BUILD_NUMBER}"
+            echo "Échec — build #${env.BUILD_NUMBER}"
             sh "docker-compose -f docker-compose.yml logs --tail=50 || true"
         }
         always {
-            echo "Pipeline termine — build #${env.BUILD_NUMBER}"
+            echo "Pipeline terminé — build #${env.BUILD_NUMBER}"
             cleanWs()
         }
     }
