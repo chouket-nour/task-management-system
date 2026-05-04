@@ -3,15 +3,14 @@ pipeline {
     tools { nodejs 'NodeJS' }
 
     parameters {
-        choice(name: 'ENV', choices: ['dev', 'staging', 'prod'], description: 'Environnement cible')
-        booleanParam(name: 'ROLLBACK',    defaultValue: false, description: 'Rollback manuel')
-        booleanParam(name: 'SKIP_DOCKER', defaultValue: false, description: 'Passer le build Docker')
+        choice(name: 'ENV',         choices: ['dev', 'staging', 'prod'], description: 'Environnement cible')
+        booleanParam(name: 'ROLLBACK',    defaultValue: false, description: 'Rollback vers la version précédente')
+        booleanParam(name: 'SKIP_DOCKER', defaultValue: false, description: 'Passer le build/push Docker')
     }
 
     environment {
-        REGISTRY                    = "nourchouket2000"
-        IMAGE_TAG                   = "${env.BUILD_NUMBER}"
-        BACKEND_SERVICES            = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
+        REGISTRY         = "nourchouket2000"
+        BACKEND_SERVICES = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
         NPM_CONFIG_CACHE            = "/var/jenkins_home/.npm-cache"
         MONGOMS_DOWNLOAD_DIR        = "/var/jenkins_home/.cache/mongodb-binaries"
         MONGOMS_DISABLE_POSTINSTALL = "1"
@@ -51,72 +50,12 @@ pipeline {
         stage('Install') {
             failFast true
             parallel {
-                stage('auth') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/auth-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('user') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/user-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('task') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/task-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('project') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/project-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('conge') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/conge-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
-                            }
-                        }
-                    }
-                }
-                stage('notif') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/notification-service') {
-                                    sh 'npm ci --prefer-offline'
-                                }
-                            }
-                        }
-                    }
-                }
+                stage('auth')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/auth-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('user')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/user-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('task')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/task-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('project') { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/project-service')      { sh 'npm ci --prefer-offline' } } } } }
+                stage('conge')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/conge-service')        { sh 'npm ci --prefer-offline' } } } } }
+                stage('notif')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } } } } }
             }
         }
 
@@ -140,76 +79,28 @@ pipeline {
             failFast true
             parallel {
                 stage('Test auth') {
-                    steps {
-                        dir('backend/auth-service') {
-                            sh 'npm test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/auth-service')         { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
                 }
                 stage('Test user') {
-                    steps {
-                        dir('backend/user-service') {
-                            sh 'npm test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/user-service')         { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
                 }
                 stage('Test task') {
-                    steps {
-                        dir('backend/task-service') {
-                            sh 'npm test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/task-service')         { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
                 }
                 stage('Test project') {
-                    steps {
-                        dir('backend/project-service') {
-                            sh 'npm test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/project-service')      { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
                 }
                 stage('Test conge') {
-                    steps {
-                        dir('backend/conge-service') {
-                            sh 'npm test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/conge-service')        { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
                 }
                 stage('Test notif') {
-                    steps {
-                        dir('backend/notification-service') {
-                            sh 'npm test'
-                        }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/notification-service') { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
                 }
             }
         }
@@ -220,12 +111,12 @@ pipeline {
                     npm ci --prefer-offline
                     mkdir -p coverage
                     npm run merge-coverage
-                    echo "Coverage mergée dans coverage/lcov.info"
+                    echo "Coverage mergee dans coverage/lcov.info"
                 '''
             }
         }
 
-        stage('SonarQube Analysis') {       
+        stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     script {
@@ -235,9 +126,9 @@ pipeline {
                                 -Dsonar.projectVersion=${env.IMAGE_TAG}
                         """
                     }
-                }   
-            }      
-        }           
+                }
+            }
+        }
 
         stage('Quality Gate') {
             steps {
@@ -252,22 +143,19 @@ pipeline {
         }
 
         stage('Docker Login') {
-            when { expression { params.SKIP_DOCKER == false } }
+            when { expression { !params.SKIP_DOCKER } }
             steps {
                 withCredentials([
                     string(credentialsId: 'docker-username', variable: 'DOCKER_USER'),
                     string(credentialsId: 'docker-password', variable: 'DOCKER_PASS')
                 ]) {
-                    sh '''
-                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                        echo "Docker Hub login OK"
-                    '''
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
                 }
             }
         }
 
         stage('Build Docker') {
-            when { expression { params.SKIP_DOCKER == false } }
+            when { expression { !params.SKIP_DOCKER } }
             steps {
                 script {
                     sh '''
@@ -276,9 +164,8 @@ pipeline {
                         docker buildx use rfc-builder
                         docker buildx inspect --bootstrap
                     '''
-                    def services = env.BACKEND_SERVICES.split(',').toList()
+                    def services    = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
-
                     def buildStages = [:]
                     services.each { service ->
                         def svc     = service.trim()
@@ -289,7 +176,7 @@ pipeline {
                                     docker buildx build \
                                         --builder rfc-builder \
                                         --platform linux/amd64 \
-                                        --tag ${REGISTRY}/rfc-${svc}:${IMAGE_TAG} \
+                                        --tag ${REGISTRY}/rfc-${svc}:${env.IMAGE_TAG} \
                                         --tag ${REGISTRY}/rfc-${svc}:latest \
                                         --load \
                                         ${context}
@@ -303,12 +190,11 @@ pipeline {
         }
 
         stage('Push Docker') {
-            when { expression { params.SKIP_DOCKER == false } }
+            when { expression { !params.SKIP_DOCKER } }
             steps {
                 script {
                     def services = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
-
                     services.each { service ->
                         def svc      = service.trim()
                         def pushed   = false
@@ -318,18 +204,13 @@ pipeline {
                             attempts++
                             try {
                                 sh """
-                                    docker push ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
+                                    docker push ${REGISTRY}/rfc-${svc}:${env.IMAGE_TAG}
                                     docker push ${REGISTRY}/rfc-${svc}:latest
-
                                 """
                                 pushed = true
-                                echo "${svc} pushed (attempt ${attempts})"
                             } catch (e) {
-                                if (attempts < 3) {
-                                    sleep(attempts * 20)
-                                } else {
-                                    error "Push ${svc} failed after 3 attempts"
-                                }
+                                if (attempts < 3) { sleep(attempts * 20) }
+                                else { error "Push ${svc} echoue apres 3 tentatives" }
                             }
                         }
                         sleep(8)
@@ -339,7 +220,7 @@ pipeline {
         }
 
         stage('Download Trivy DB') {
-            when { expression { params.SKIP_DOCKER == false } }
+            when { expression { !params.SKIP_DOCKER } }
             steps {
                 sh """
                     mkdir -p ${TRIVY_CACHE_DIR}
@@ -352,19 +233,15 @@ pipeline {
         }
 
         stage('Security Scan (Trivy)') {
-            when { expression { params.SKIP_DOCKER == false } }
+            when { expression { !params.SKIP_DOCKER } }
             steps {
                 script {
-                    def services = env.BACKEND_SERVICES.split(',').toList()
+                    def services    = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
-
                     def trivyReport = [:]
                     def trivyFailed = []
-
                     services.each { service ->
-                        def svc = service.trim()
-                        echo "=== Trivy scan: ${svc} ==="
-
+                        def svc      = service.trim()
                         def exitCode = sh(
                             returnStatus: true,
                             script: """
@@ -378,60 +255,125 @@ pipeline {
                                     --ignorefile ${WORKSPACE}/.trivyignore \
                                     --cache-dir ${TRIVY_CACHE_DIR} \
                                     --timeout 10m \
-                                    ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
+                                    ${REGISTRY}/rfc-${svc}:${env.IMAGE_TAG}
                             """
                         )
-
                         trivyReport[svc] = (exitCode == 0) ? 'CLEAN' : 'VULNERABLE'
                         if (exitCode != 0) trivyFailed.add(svc)
                     }
-
                     echo "============================================"
                     echo "         TRIVY SECURITY REPORT"
                     echo "============================================"
                     trivyReport.each { svc, status ->
-                        def icon = (status == 'CLEAN') ? '[OK]  ' : '[FAIL]'
-                        echo "${icon}  ${svc.padRight(30)} ${status}"
+                        echo "${(status == 'CLEAN') ? '[OK]  ' : '[FAIL]'}  ${svc.padRight(30)} ${status}"
                     }
                     echo "============================================"
-
                     if (trivyFailed) {
-                        unstable("Vulnerabilites HIGH/CRITICAL detectees dans: ${trivyFailed.join(', ')}")
+                        unstable("Vulnerabilites HIGH/CRITICAL : ${trivyFailed.join(', ')}")
                     }
                 }
             }
         }
 
         stage('Deploy') {
-            when { expression { params.ROLLBACK == false } }
+            when { expression { !params.ROLLBACK } }
             steps {
                 script {
                     if (params.ENV == 'prod') {
-                        input message: "Confirm deployment to PRODUCTION?", ok: "Deploy"
+                        input message: "Confirmer le déploiement en PRODUCTION ?", ok: "Deploy"
                     }
                 }
-                sh "IMAGE_TAG=${IMAGE_TAG} docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans"
+                withCredentials([
+                    string(credentialsId: 'jwt-secret',        variable: 'JWT_SECRET'),
+                    string(credentialsId: 'mongo-uri-auth',    variable: 'MONGO_URI_AUTH'),
+                    string(credentialsId: 'mongo-uri-user',    variable: 'MONGO_URI_USER'),
+                    string(credentialsId: 'mongo-uri-task',    variable: 'MONGO_URI_TASK'),
+                    string(credentialsId: 'mongo-uri-project', variable: 'MONGO_URI_PROJECT'),
+                    string(credentialsId: 'mongo-uri-conge',   variable: 'MONGO_URI_CONGE'),
+                    string(credentialsId: 'mongo-uri-notif',   variable: 'MONGO_URI_NOTIF'),
+                ]) {
+                    sh """
+                        IMAGE_TAG=${env.IMAGE_TAG} \
+                        JWT_SECRET=\$JWT_SECRET \
+                        MONGO_URI_AUTH=\$MONGO_URI_AUTH \
+                        MONGO_URI_USER=\$MONGO_URI_USER \
+                        MONGO_URI_TASK=\$MONGO_URI_TASK \
+                        MONGO_URI_PROJECT=\$MONGO_URI_PROJECT \
+                        MONGO_URI_CONGE=\$MONGO_URI_CONGE \
+                        MONGO_URI_NOTIF=\$MONGO_URI_NOTIF \
+                        AUTH_SERVICE_URL=http://auth-service:5001 \
+                        USER_SERVICE_URL=http://user-service:5002 \
+                        TASK_SERVICE_URL=http://task-service:5003 \
+                        PROJECT_SERVICE_URL=http://project-service:5004 \
+                        CONGE_SERVICE_URL=http://conge-service:5005 \
+                        NOTIF_SERVICE_URL=http://notification-service:5006 \
+                        REACT_APP_API_URL=http://localhost:5000 \
+                        docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
+                    """
+                }
             }
         }
 
         stage('Rollback') {
-            when { expression { params.ROLLBACK == true } }
+            when { expression { params.ROLLBACK } }
             steps {
-                echo "Rolling back to: ${env.PREV_TAG}"
-                sh "IMAGE_TAG=${env.PREV_TAG} docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans"
+                echo "Rolling back vers : ${env.PREV_TAG}"
+                withCredentials([
+                    string(credentialsId: 'jwt-secret',        variable: 'JWT_SECRET'),
+                    string(credentialsId: 'mongo-uri-auth',    variable: 'MONGO_URI_AUTH'),
+                    string(credentialsId: 'mongo-uri-user',    variable: 'MONGO_URI_USER'),
+                    string(credentialsId: 'mongo-uri-task',    variable: 'MONGO_URI_TASK'),
+                    string(credentialsId: 'mongo-uri-project', variable: 'MONGO_URI_PROJECT'),
+                    string(credentialsId: 'mongo-uri-conge',   variable: 'MONGO_URI_CONGE'),
+                    string(credentialsId: 'mongo-uri-notif',   variable: 'MONGO_URI_NOTIF'),
+                ]) {
+                    sh """
+                        IMAGE_TAG=${env.PREV_TAG} \
+                        JWT_SECRET=\$JWT_SECRET \
+                        MONGO_URI_AUTH=\$MONGO_URI_AUTH \
+                        MONGO_URI_USER=\$MONGO_URI_USER \
+                        MONGO_URI_TASK=\$MONGO_URI_TASK \
+                        MONGO_URI_PROJECT=\$MONGO_URI_PROJECT \
+                        MONGO_URI_CONGE=\$MONGO_URI_CONGE \
+                        MONGO_URI_NOTIF=\$MONGO_URI_NOTIF \
+                        AUTH_SERVICE_URL=http://auth-service:5001 \
+                        USER_SERVICE_URL=http://user-service:5002 \
+                        TASK_SERVICE_URL=http://task-service:5003 \
+                        PROJECT_SERVICE_URL=http://project-service:5004 \
+                        CONGE_SERVICE_URL=http://conge-service:5005 \
+                        NOTIF_SERVICE_URL=http://notification-service:5006 \
+                        REACT_APP_API_URL=http://localhost:5000 \
+                        docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
+                    """
+                }
             }
         }
 
         stage('Health Check') {
-            when { expression { params.ROLLBACK == false } }
+            when { expression { !params.ROLLBACK } }
             steps {
                 sh '''
-                    for i in $(seq 1 12); do
-                        curl -sf http://localhost:5000/health && echo "API OK" && exit 0
-                        echo "Attempt $i/12 -- waiting 5s..."
+                    echo "=== Health check via réseau Docker ==="
+                    for i in $(seq 1 24); do
+                        HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" \
+                            --connect-timeout 3 --max-time 5 \
+                            http://api-gateway:5000/health || echo "000")
+                        if [ "$HTTP_CODE" = "200" ]; then
+                            echo "[OK] api-gateway healthy apres tentative $i"
+                            exit 0
+                        fi
+                        echo "Tentative $i/24 -- HTTP $HTTP_CODE -- attente 5s..."
                         sleep 5
                     done
-                    echo "Health check failed after 60s"
+                    echo "================================================"
+                    echo "  HEALTH CHECK ECHOUE apres 120s"
+                    echo "================================================"
+                    docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                    docker inspect --format "{{.Name}} => {{.State.Health.Status}}" \
+                        mongodb auth-service user-service task-service \
+                        project-service conge-service notification-service \
+                        api-gateway 2>&1 || true
+                    docker logs api-gateway --tail=50 2>&1 || true
                     exit 1
                 '''
             }
@@ -449,14 +391,14 @@ pipeline {
 
     post {
         failure {
-            echo "Failed -- build #${env.BUILD_NUMBER}"
+            echo "ECHEC -- build #${env.BUILD_NUMBER}"
             sh "docker-compose -f ${COMPOSE_FILE} logs --tail=50 || true"
         }
         success {
-            echo "RFC Connect deployed -- build #${env.BUILD_NUMBER} -- version ${env.IMAGE_TAG}"
+            echo "RFC Connect déployé -- build #${env.BUILD_NUMBER} -- version ${env.IMAGE_TAG}"
         }
         always {
-            echo "Pipeline finished -- build #${env.BUILD_NUMBER}"
+            echo "Pipeline terminé -- build #${env.BUILD_NUMBER}"
             cleanWs()
         }
     }
