@@ -224,16 +224,19 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
-            steps {
-                withSonarQubeEnv('SonarQube') {
-                    script {
-                        def scannerHome = tool 'SonarScanner'
-                        sh "${scannerHome}/bin/sonar-scanner"
-                    }
-                }
+    stage('SonarQube Analysis') {
+        steps {
+            withSonarQubeEnv('SonarQube') {
+             script {
+                    def scannerHome = tool 'SonarScanner'
+                sh """
+                    ${scannerHome}/bin/sonar-scanner \
+                        -Dsonar.projectVersion=${env.IMAGE_TAG}
+                """
             }
         }
+    }
+
 
         stage('Quality Gate') {
             steps {
