@@ -16,6 +16,8 @@ pipeline {
         MONGOMS_DOWNLOAD_DIR        = "/var/jenkins_home/.cache/mongodb-binaries"
         MONGOMS_DISABLE_POSTINSTALL = "1"
         DOCKER_BUILDKIT             = "1"
+        COMPOSE_FILE                = "${env.WORKSPACE}/docker-compose.yml"
+        TRIVY_CACHE_DIR             = "/var/jenkins_home/.cache/trivy"
     }
 
     stages {
@@ -33,7 +35,14 @@ pipeline {
                 script {
                     env.GIT_TAG   = sh(script: "git describe --tags --always || echo v0.0.0", returnStdout: true).trim()
                     env.IMAGE_TAG = "${env.GIT_TAG}-${env.BUILD_NUMBER}"
-                    env.PREV_TAG  = "${env.GIT_TAG}-${(env.BUILD_NUMBER.toInteger() - 1).toString()}"
+
+                    env.PREV_TAG = sh(
+                        script: "git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo ''",
+                        returnStdout: true
+                    ).trim()
+                    if (!env.PREV_TAG) {
+                        env.PREV_TAG = "${env.GIT_TAG}-${(env.BUILD_NUMBER.toInteger() - 1).toString()}"
+                    }
                 }
                 echo "Version courante  : ${env.IMAGE_TAG}"
                 echo "Version precedente: ${env.PREV_TAG}"
@@ -46,54 +55,42 @@ pipeline {
                 stage('auth') {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/auth-service') { sh 'npm ci --prefer-offline' }
-                            }
+                            retry(2) { dir('backend/auth-service') { sh 'npm ci --prefer-offline' } }
                         }
                     }
                 }
                 stage('user') {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/user-service') { sh 'npm ci --prefer-offline' }
-                            }
+                            retry(2) { dir('backend/user-service') { sh 'npm ci --prefer-offline' } }
                         }
                     }
                 }
                 stage('task') {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/task-service') { sh 'npm ci --prefer-offline' }
-                            }
+                            retry(2) { dir('backend/task-service') { sh 'npm ci --prefer-offline' } }
                         }
                     }
                 }
                 stage('project') {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/project-service') { sh 'npm ci --prefer-offline' }
-                            }
+                            retry(2) { dir('backend/project-service') { sh 'npm ci --prefer-offline' } }
                         }
                     }
                 }
                 stage('conge') {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/conge-service') { sh 'npm ci --prefer-offline' }
-                            }
+                            retry(2) { dir('backend/conge-service') { sh 'npm ci --prefer-offline' } }
                         }
                     }
                 }
                 stage('notif') {
                     steps {
                         timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/notification-service') { sh 'npm ci --prefer-offline' }
-                            }
+                            retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } }
                         }
                     }
                 }
@@ -120,64 +117,28 @@ pipeline {
             failFast true
             parallel {
                 stage('Test auth') {
-                    steps {
-                        dir('backend/auth-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/auth-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
                 }
                 stage('Test user') {
-                    steps {
-                        dir('backend/user-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/user-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
                 }
                 stage('Test task') {
-                    steps {
-                        dir('backend/task-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/task-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
                 }
                 stage('Test project') {
-                    steps {
-                        dir('backend/project-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/project-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
                 }
                 stage('Test conge') {
-                    steps {
-                        dir('backend/conge-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/conge-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
                 }
                 stage('Test notif') {
-                    steps {
-                        dir('backend/notification-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml'
-                        }
-                    }
+                    steps { dir('backend/notification-service') { sh 'npm test' } }
+                    post { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
                 }
             }
         }
@@ -220,7 +181,6 @@ pipeline {
             }
         }
 
-        //  Build parallel — local only, zero network
         stage('Build Docker') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
@@ -246,12 +206,12 @@ pipeline {
                                     docker buildx build \
                                         --builder rfc-builder \
                                         --platform linux/amd64 \
-                                        --cache-from type=registry,ref=${REGISTRY}/rfc-${svc}:latest \
                                         --tag ${REGISTRY}/rfc-${svc}:${IMAGE_TAG} \
                                         --tag ${REGISTRY}/rfc-${svc}:latest \
                                         --load \
                                         ${context}
                                 """
+                                //   — --cache-from retiré (inutile avec --load local)
                             }
                         }
                     }
@@ -260,7 +220,6 @@ pipeline {
             }
         }
 
-        //  Sequential push with backoff — prevents rate limit and EOF errors
         stage('Push Docker') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
@@ -283,22 +242,34 @@ pipeline {
                                     docker push ${REGISTRY}/rfc-${svc}:latest
                                 """
                                 pushed = true
-                                echo " ${svc} pushed successfully (attempt ${attempts})"
+                                echo " ${svc} pushed (attempt ${attempts})"
                             } catch (e) {
                                 if (attempts < 3) {
                                     def waitSec = attempts * 20
-                                    echo " Attempt ${attempts} failed — waiting ${waitSec}s before retry..."
+                                    echo " Attempt ${attempts} failed — waiting ${waitSec}s..."
                                     sleep(waitSec)
                                 } else {
                                     error " Push ${svc} failed after 3 attempts"
                                 }
                             }
                         }
-
-                        //  8s pause between each service to avoid rate limit
                         sleep(8)
                     }
                 }
+            }
+        }
+
+        //  — Trivy : téléchargement DB en une seule fois, puis scans parallèles sans réseau
+        stage('Download Trivy DB') {
+            when { expression { params.SKIP_DOCKER == false } }
+            steps {
+                sh """
+                    mkdir -p ${TRIVY_CACHE_DIR}
+                    trivy image \
+                        --download-db-only \
+                        --cache-dir ${TRIVY_CACHE_DIR} \
+                        --timeout 20m
+                """
             }
         }
 
@@ -319,8 +290,11 @@ pipeline {
                                     --severity HIGH,CRITICAL \
                                     --ignore-unfixed \
                                     --scanners vuln \
+                                    --skip-db-update \
+                                    --cache-dir ${TRIVY_CACHE_DIR} \
                                     ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
                             """
+                            //  --skip-db-update → utilise le cache, zéro téléchargement
                         }
                     }
                     parallel trivyStages
@@ -336,10 +310,7 @@ pipeline {
                         input message: "Confirm deployment to PRODUCTION?", ok: "Deploy"
                     }
                 }
-                //  No pull — images already available locally after Build stage
-                sh """
-                    IMAGE_TAG=${IMAGE_TAG} docker-compose -f docker-compose.yml up -d --remove-orphans
-                """
+                sh "IMAGE_TAG=${IMAGE_TAG} docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans"
             }
         }
 
@@ -347,7 +318,7 @@ pipeline {
             when { expression { params.ROLLBACK == true } }
             steps {
                 echo "Rolling back to: ${env.PREV_TAG}"
-                sh "IMAGE_TAG=${env.PREV_TAG} docker-compose -f docker-compose.yml up -d --remove-orphans"
+                sh "IMAGE_TAG=${env.PREV_TAG} docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans"
             }
         }
 
@@ -377,16 +348,16 @@ pipeline {
     }
 
     post {
-        success {
-            echo "RFC Connect deployed — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}"
-        }
         failure {
-            echo "Failed — build #${env.BUILD_NUMBER}"
-            sh "docker-compose -f docker-compose.yml logs --tail=50 || true"
+            echo " Failed — build #${env.BUILD_NUMBER}"
+            sh "docker-compose -f ${COMPOSE_FILE} logs --tail=50 || true"
+        }
+        success {
+            echo " RFC Connect deployed — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}"
         }
         always {
             echo "Pipeline finished — build #${env.BUILD_NUMBER}"
-            cleanWs()
+            cleanWs()  // en dernier, après les logs
         }
     }
 }
