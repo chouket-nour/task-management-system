@@ -1,6 +1,7 @@
 FROM node:22-alpine AS build
 
-RUN apk update && apk upgrade --no-cache
+RUN apk update && apk upgrade --no-cache && \
+    npm install -g npm@10
 
 WORKDIR /app
 
