@@ -1,0 +1,11 @@
+{
+  "name": "task-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "merge-coverage": "lcov-result-merger 'backend/*/coverage/lcov.info' coverage/lcov.info"
+  },
+  "devDependencies": {
+    "lcov-result-merger": "^6.0.0"
+  }
+}

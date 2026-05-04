@@ -213,6 +213,16 @@ pipeline {
                 }
             }
         }
+        stage('Merge Coverage') {
+            steps {
+                sh '''
+                    npm ci --prefer-offline
+                    mkdir -p coverage
+                    npm run merge-coverage
+                    echo " Coverage mergée dans coverage/lcov.info"
+                '''
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
