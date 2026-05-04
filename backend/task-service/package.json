@@ -4,7 +4,7 @@
   "description": "",
   "main": "server.js",
   "scripts": {
-    "test": "jest --config ../../jest.config.js --selectProjects task-service --forceExit",
+    "test": "jest --config ../../jest.config.js --selectProjects task-service --coverage --forceExit",
     "start": "node server.js"
   },
   "keywords": [],
