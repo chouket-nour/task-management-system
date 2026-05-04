@@ -43,60 +43,12 @@ pipeline {
         stage('Install') {
             failFast true
             parallel {
-                stage('auth') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/auth-service') { sh 'npm ci --prefer-offline' }
-                            }
-                        }
-                    }
-                }
-                stage('user') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/user-service') { sh 'npm ci --prefer-offline' }
-                            }
-                        }
-                    }
-                }
-                stage('task') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/task-service') { sh 'npm ci --prefer-offline' }
-                            }
-                        }
-                    }
-                }
-                stage('project') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/project-service') { sh 'npm ci --prefer-offline' }
-                            }
-                        }
-                    }
-                }
-                stage('conge') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/conge-service') { sh 'npm ci --prefer-offline' }
-                            }
-                        }
-                    }
-                }
-                stage('notif') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) {
-                                dir('backend/notification-service') { sh 'npm ci --prefer-offline' }
-                            }
-                        }
-                    }
-                }
+                stage('auth')    { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/auth-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('user')    { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/user-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('task')    { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/task-service')         { sh 'npm ci --prefer-offline' } } } } }
+                stage('project') { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/project-service')     { sh 'npm ci --prefer-offline' } } } } }
+                stage('conge')   { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/conge-service')       { sh 'npm ci --prefer-offline' } } } } }
+                stage('notif')   { steps { timeout(time:10,unit:'MINUTES') { retry(2) { dir('backend/notification-service'){ sh 'npm ci --prefer-offline' } } } } }
             }
         }
 
@@ -119,66 +71,12 @@ pipeline {
         stage('Tests') {
             failFast true
             parallel {
-                stage('Test auth') {
-                    steps {
-                        dir('backend/auth-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml'
-                        }
-                    }
-                }
-                stage('Test user') {
-                    steps {
-                        dir('backend/user-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml'
-                        }
-                    }
-                }
-                stage('Test task') {
-                    steps {
-                        dir('backend/task-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml'
-                        }
-                    }
-                }
-                stage('Test project') {
-                    steps {
-                        dir('backend/project-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml'
-                        }
-                    }
-                }
-                stage('Test conge') {
-                    steps {
-                        dir('backend/conge-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml'
-                        }
-                    }
-                }
-                stage('Test notif') {
-                    steps {
-                        dir('backend/notification-service') { sh 'npm test' }
-                    }
-                    post {
-                        always {
-                            junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml'
-                        }
-                    }
-                }
+                stage('Test auth')    { steps { dir('backend/auth-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } } }
+                stage('Test user')    { steps { dir('backend/user-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } } }
+                stage('Test task')    { steps { dir('backend/task-service')         { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } } }
+                stage('Test project') { steps { dir('backend/project-service')     { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } } }
+                stage('Test conge')   { steps { dir('backend/conge-service')       { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } } }
+                stage('Test notif')   { steps { dir('backend/notification-service'){ sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } } }
             }
         }
 
@@ -220,6 +118,7 @@ pipeline {
             }
         }
 
+        // Build parallèle — local, zéro réseau
         stage('Build Docker') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
@@ -245,7 +144,7 @@ pipeline {
                                     docker buildx build \
                                         --builder rfc-builder \
                                         --platform linux/amd64 \
-                                        --cache-from type=registry,ref=${REGISTRY}/rfc-${svc}:cache \
+                                        --cache-from type=registry,ref=${REGISTRY}/rfc-${svc}:latest \
                                         --tag ${REGISTRY}/rfc-${svc}:${IMAGE_TAG} \
                                         --tag ${REGISTRY}/rfc-${svc}:latest \
                                         --load \
@@ -254,11 +153,12 @@ pipeline {
                             }
                         }
                     }
-                    parallel buildStages
+                    parallel buildStages  //  parallèle OK car 100% local
                 }
             }
         }
 
+        //  Push séquentiel avec backoff — évite rate limit et EOF
         stage('Push Docker') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
@@ -266,15 +166,35 @@ pipeline {
                     def services = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
 
-                    services.each { service ->
-                        def svc = service.trim()
-                        retry(3) {
-                            sh """
-                                echo "=== Push ${svc} ==="
-                                docker push ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
-                                docker push ${REGISTRY}/rfc-${svc}:latest
-                            """
+                    services.each { svc ->
+                        svc = svc.trim()
+                        echo "=== Push ${svc} ==="
+
+                        def pushed   = false
+                        def attempts = 0
+
+                        while (!pushed && attempts < 3) {
+                            attempts++
+                            try {
+                                sh """
+                                    docker push ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
+                                    docker push ${REGISTRY}/rfc-${svc}:latest
+                                """
+                                pushed = true
+                                echo " ${svc} pushé (tentative ${attempts})"
+                            } catch (e) {
+                                if (attempts < 3) {
+                                    def waitSec = attempts * 20  // 20s → 40s → 60s
+                                    echo " Échec tentative ${attempts} — attente ${waitSec}s..."
+                                    sleep(waitSec)
+                                } else {
+                                    error " Push ${svc} échoué après 3 tentatives"
+                                }
+                            }
                         }
+
+                        
+                        sleep(8)
                     }
                 }
             }
@@ -314,8 +234,8 @@ pipeline {
                         input message: "Confirmer le deploiement en PRODUCTION ?", ok: "Deployer"
                     }
                 }
+               
                 sh """
-                    IMAGE_TAG=${IMAGE_TAG} docker-compose -f docker-compose.yml pull
                     IMAGE_TAG=${IMAGE_TAG} docker-compose -f docker-compose.yml up -d --remove-orphans
                 """
             }
