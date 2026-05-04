@@ -213,30 +213,31 @@ pipeline {
                 }
             }
         }
+
         stage('Merge Coverage') {
             steps {
                 sh '''
                     npm ci --prefer-offline
                     mkdir -p coverage
                     npm run merge-coverage
-                    echo " Coverage mergée dans coverage/lcov.info"
+                    echo "Coverage mergée dans coverage/lcov.info"
                 '''
             }
         }
 
-    stage('SonarQube Analysis') {
-        steps {
-            withSonarQubeEnv('SonarQube') {
-             script {
-                    def scannerHome = tool 'SonarScanner'
-                sh """
-                    ${scannerHome}/bin/sonar-scanner \
-                        -Dsonar.projectVersion=${env.IMAGE_TAG}
-                """
-            }
-        }
-    }
-
+        stage('SonarQube Analysis') {       
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    script {
+                        def scannerHome = tool 'SonarScanner'
+                        sh """
+                            ${scannerHome}/bin/sonar-scanner \
+                                -Dsonar.projectVersion=${env.IMAGE_TAG}
+                        """
+                    }
+                }   
+            }      
+        }           
 
         stage('Quality Gate') {
             steps {
@@ -319,6 +320,7 @@ pipeline {
                                 sh """
                                     docker push ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
                                     docker push ${REGISTRY}/rfc-${svc}:latest
+
                                 """
                                 pushed = true
                                 echo "${svc} pushed (attempt ${attempts})"
