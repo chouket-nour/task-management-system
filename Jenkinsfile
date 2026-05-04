@@ -51,12 +51,72 @@ pipeline {
         stage('Install') {
             failFast true
             parallel {
-                stage('auth')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/auth-service')          { sh 'npm ci --prefer-offline' } } } } }
-                stage('user')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/user-service')          { sh 'npm ci --prefer-offline' } } } } }
-                stage('task')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/task-service')          { sh 'npm ci --prefer-offline' } } } } }
-                stage('project') { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/project-service')      { sh 'npm ci --prefer-offline' } } } } }
-                stage('conge')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/conge-service')        { sh 'npm ci --prefer-offline' } } } } }
-                stage('notif')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } } } } }
+                stage('auth') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/auth-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('user') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/user-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('task') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/task-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('project') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/project-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('conge') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/conge-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('notif') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/notification-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -79,12 +139,78 @@ pipeline {
         stage('Tests') {
             failFast true
             parallel {
-                stage('Test auth')    { steps { dir('backend/auth-service')          { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } } }
-                stage('Test user')    { steps { dir('backend/user-service')          { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } } }
-                stage('Test task')    { steps { dir('backend/task-service')          { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } } }
-                stage('Test project') { steps { dir('backend/project-service')      { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } } }
-                stage('Test conge')   { steps { dir('backend/conge-service')        { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } } }
-                stage('Test notif')   { steps { dir('backend/notification-service') { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } } }
+                stage('Test auth') {
+                    steps {
+                        dir('backend/auth-service') {
+                            sh 'npm test'
+                        }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test user') {
+                    steps {
+                        dir('backend/user-service') {
+                            sh 'npm test'
+                        }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test task') {
+                    steps {
+                        dir('backend/task-service') {
+                            sh 'npm test'
+                        }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test project') {
+                    steps {
+                        dir('backend/project-service') {
+                            sh 'npm test'
+                        }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test conge') {
+                    steps {
+                        dir('backend/conge-service') {
+                            sh 'npm test'
+                        }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml'
+                        }
+                    }
+                }
+                stage('Test notif') {
+                    steps {
+                        dir('backend/notification-service') {
+                            sh 'npm test'
+                        }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml'
+                        }
+                    }
+                }
             }
         }
 
