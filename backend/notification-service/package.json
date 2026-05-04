@@ -12,11 +12,15 @@
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.6",
+    "cross-spawn": "^7.0.6",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "glob": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
+    "minimatch": "^9.0.9",
     "mongoose": "^9.3.0",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "tar": "^7.5.13"
   },
   "devDependencies": {
     "jest": "^30.3.0",
@@ -27,9 +31,14 @@
   "jest": {
     "testEnvironment": "node",
     "testTimeout": 30000,
-    "reporters": ["default", "jest-junit"],
+    "reporters": [
+      "default",
+      "jest-junit"
+    ],
     "coverageThreshold": {
-      "global": { "lines": 80 }
+      "global": {
+        "lines": 80
+      }
     }
   },
   "mongodbMemoryServer": {
