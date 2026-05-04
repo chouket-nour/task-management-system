@@ -293,6 +293,7 @@ pipeline {
                             --skip-db-update \
                             --ignorefile ${WORKSPACE}/.trivyignore \
                             --cache-dir ${TRIVY_CACHE_DIR} \
+                            --timeout 10m \
                             ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
                     """
                 }
