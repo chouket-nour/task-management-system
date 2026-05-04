@@ -13,7 +13,6 @@ module.exports = {
     testEnvironment: "node",
     rootDir: __dirname,
     roots: [`<rootDir>/backend/${service}`],
-    collectCoverage: true,
     collectCoverageFrom: [
       `backend/${service}/**/*.js`,
       `!backend/${service}/node_modules/**`,
