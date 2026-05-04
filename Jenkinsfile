@@ -273,34 +273,34 @@ pipeline {
             }
         }
 
-        stage('Security Scan (Trivy)') {
-            when { expression { params.SKIP_DOCKER == false } }
-            steps {
-                script {
-                    def services = env.BACKEND_SERVICES.split(',').toList()
-                    services.add('frontend')
+       stage('Security Scan (Trivy)') {
+    when { expression { params.SKIP_DOCKER == false } }
+    steps {
+        script {
+            def services = env.BACKEND_SERVICES.split(',').toList()
+            services.add('frontend')
 
-                    def trivyStages = [:]
-                    services.each { service ->
-                        def svc = service.trim()
-                        trivyStages["Trivy ${svc}"] = {
-                            sh """
-                                trivy image \
-                                    --exit-code 0 \
-                                    --severity HIGH,CRITICAL \
-                                    --ignore-unfixed \
-                                    --scanners vuln \
-                                    --skip-db-update \
-                                    --cache-dir ${TRIVY_CACHE_DIR} \
-                                    ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
-                            """
-                            //  --skip-db-update → utilise le cache, zéro téléchargement
-                        }
-                    }
-                    parallel trivyStages
+            def trivyStages = [:]
+            services.each { service ->
+                def svc = service.trim()
+                trivyStages["Trivy ${svc}"] = {
+                    sh """
+                        trivy image \
+                            --exit-code 0 \
+                            --severity HIGH,CRITICAL \
+                            --ignore-unfixed \
+                            --scanners vuln \
+                            --skip-db-update \
+                            --ignorefile ${WORKSPACE}/.trivyignore \
+                            --cache-dir ${TRIVY_CACHE_DIR} \
+                            ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
+                    """
                 }
             }
+            parallel trivyStages
         }
+    }
+}
 
         stage('Deploy') {
             when { expression { params.ROLLBACK == false } }
