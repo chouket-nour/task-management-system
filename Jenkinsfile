@@ -35,8 +35,7 @@ pipeline {
                 script {
                     env.GIT_TAG   = sh(script: "git describe --tags --always || echo v0.0.0", returnStdout: true).trim()
                     env.IMAGE_TAG = "${env.GIT_TAG}-${env.BUILD_NUMBER}"
-
-                    env.PREV_TAG = sh(
+                    env.PREV_TAG  = sh(
                         script: "git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo ''",
                         returnStdout: true
                     ).trim()
@@ -52,48 +51,12 @@ pipeline {
         stage('Install') {
             failFast true
             parallel {
-                stage('auth') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) { dir('backend/auth-service') { sh 'npm ci --prefer-offline' } }
-                        }
-                    }
-                }
-                stage('user') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) { dir('backend/user-service') { sh 'npm ci --prefer-offline' } }
-                        }
-                    }
-                }
-                stage('task') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) { dir('backend/task-service') { sh 'npm ci --prefer-offline' } }
-                        }
-                    }
-                }
-                stage('project') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) { dir('backend/project-service') { sh 'npm ci --prefer-offline' } }
-                        }
-                    }
-                }
-                stage('conge') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) { dir('backend/conge-service') { sh 'npm ci --prefer-offline' } }
-                        }
-                    }
-                }
-                stage('notif') {
-                    steps {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } }
-                        }
-                    }
-                }
+                stage('auth')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/auth-service')          { sh 'npm ci --prefer-offline' } } } } }
+                stage('user')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/user-service')          { sh 'npm ci --prefer-offline' } } } } }
+                stage('task')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/task-service')          { sh 'npm ci --prefer-offline' } } } } }
+                stage('project') { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/project-service')      { sh 'npm ci --prefer-offline' } } } } }
+                stage('conge')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/conge-service')        { sh 'npm ci --prefer-offline' } } } } }
+                stage('notif')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } } } } }
             }
         }
 
@@ -116,30 +79,12 @@ pipeline {
         stage('Tests') {
             failFast true
             parallel {
-                stage('Test auth') {
-                    steps { dir('backend/auth-service') { sh 'npm test' } }
-                    post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
-                }
-                stage('Test user') {
-                    steps { dir('backend/user-service') { sh 'npm test' } }
-                    post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
-                }
-                stage('Test task') {
-                    steps { dir('backend/task-service') { sh 'npm test' } }
-                    post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
-                }
-                stage('Test project') {
-                    steps { dir('backend/project-service') { sh 'npm test' } }
-                    post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
-                }
-                stage('Test conge') {
-                    steps { dir('backend/conge-service') { sh 'npm test' } }
-                    post { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
-                }
-                stage('Test notif') {
-                    steps { dir('backend/notification-service') { sh 'npm test' } }
-                    post { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
-                }
+                stage('Test auth')    { steps { dir('backend/auth-service')          { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } } }
+                stage('Test user')    { steps { dir('backend/user-service')          { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } } }
+                stage('Test task')    { steps { dir('backend/task-service')          { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } } }
+                stage('Test project') { steps { dir('backend/project-service')      { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } } }
+                stage('Test conge')   { steps { dir('backend/conge-service')        { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } } }
+                stage('Test notif')   { steps { dir('backend/notification-service') { sh 'npm test' } } post { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } } }
             }
         }
 
@@ -191,7 +136,6 @@ pipeline {
                         docker buildx use rfc-builder
                         docker buildx inspect --bootstrap
                     '''
-
                     def services = env.BACKEND_SERVICES.split(',').toList()
                     services.add('frontend')
 
@@ -199,7 +143,6 @@ pipeline {
                     services.each { service ->
                         def svc     = service.trim()
                         def context = (svc == 'frontend') ? './frontend' : "./backend/${svc}"
-
                         buildStages["Build ${svc}"] = {
                             retry(2) {
                                 sh """
@@ -211,7 +154,6 @@ pipeline {
                                         --load \
                                         ${context}
                                 """
-                                //   — --cache-from retiré (inutile avec --load local)
                             }
                         }
                     }
@@ -231,9 +173,7 @@ pipeline {
                         def svc      = service.trim()
                         def pushed   = false
                         def attempts = 0
-
                         echo "=== Pushing ${svc} ==="
-
                         while (!pushed && attempts < 3) {
                             attempts++
                             try {
@@ -242,14 +182,12 @@ pipeline {
                                     docker push ${REGISTRY}/rfc-${svc}:latest
                                 """
                                 pushed = true
-                                echo " ${svc} pushed (attempt ${attempts})"
+                                echo "${svc} pushed (attempt ${attempts})"
                             } catch (e) {
                                 if (attempts < 3) {
-                                    def waitSec = attempts * 20
-                                    echo " Attempt ${attempts} failed — waiting ${waitSec}s..."
-                                    sleep(waitSec)
+                                    sleep(attempts * 20)
                                 } else {
-                                    error " Push ${svc} failed after 3 attempts"
+                                    error "Push ${svc} failed after 3 attempts"
                                 }
                             }
                         }
@@ -259,7 +197,6 @@ pipeline {
             }
         }
 
-        //  — Trivy : téléchargement DB en une seule fois, puis scans parallèles sans réseau
         stage('Download Trivy DB') {
             when { expression { params.SKIP_DOCKER == false } }
             steps {
@@ -273,35 +210,56 @@ pipeline {
             }
         }
 
-       stage('Security Scan (Trivy)') {
-    when { expression { params.SKIP_DOCKER == false } }
-    steps {
-        script {
-            def services = env.BACKEND_SERVICES.split(',').toList()
-            services.add('frontend')
+        stage('Security Scan (Trivy)') {
+            when { expression { params.SKIP_DOCKER == false } }
+            steps {
+                script {
+                    def services = env.BACKEND_SERVICES.split(',').toList()
+                    services.add('frontend')
 
-            def trivyStages = [:]
-            services.each { service ->
-                def svc = service.trim()
-                trivyStages["Trivy ${svc}"] = {
-                    sh """
-                        trivy image \
-                            --exit-code 0 \
-                            --severity HIGH,CRITICAL \
-                            --ignore-unfixed \
-                            --scanners vuln \
-                            --skip-db-update \
-                            --ignorefile ${WORKSPACE}/.trivyignore \
-                            --cache-dir ${TRIVY_CACHE_DIR} \
-                            --timeout 10m \
-                            ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
-                    """
+                    def trivyReport = [:]
+                    def trivyFailed = []
+
+                    services.each { service ->
+                        def svc = service.trim()
+                        echo "=== Trivy scan: ${svc} ==="
+
+                        def exitCode = sh(
+                            returnStatus: true,
+                            script: """
+                                trivy image \
+                                    --exit-code 1 \
+                                    --severity HIGH,CRITICAL \
+                                    --ignore-unfixed \
+                                    --scanners vuln \
+                                    --skip-db-update \
+                                    --format table \
+                                    --ignorefile ${WORKSPACE}/.trivyignore \
+                                    --cache-dir ${TRIVY_CACHE_DIR} \
+                                    --timeout 10m \
+                                    ${REGISTRY}/rfc-${svc}:${IMAGE_TAG}
+                            """
+                        )
+
+                        trivyReport[svc] = (exitCode == 0) ? 'CLEAN' : 'VULNERABLE'
+                        if (exitCode != 0) trivyFailed.add(svc)
+                    }
+
+                    echo "============================================"
+                    echo "         TRIVY SECURITY REPORT"
+                    echo "============================================"
+                    trivyReport.each { svc, status ->
+                        def icon = (status == 'CLEAN') ? '[OK]  ' : '[FAIL]'
+                        echo "${icon}  ${svc.padRight(30)} ${status}"
+                    }
+                    echo "============================================"
+
+                    if (trivyFailed) {
+                        unstable("Vulnerabilites HIGH/CRITICAL detectees dans: ${trivyFailed.join(', ')}")
+                    }
                 }
             }
-            parallel trivyStages
         }
-    }
-}
 
         stage('Deploy') {
             when { expression { params.ROLLBACK == false } }
@@ -329,7 +287,7 @@ pipeline {
                 sh '''
                     for i in $(seq 1 12); do
                         curl -sf http://localhost:5000/health && echo "API OK" && exit 0
-                        echo "Attempt $i/12 — waiting 5s..."
+                        echo "Attempt $i/12 -- waiting 5s..."
                         sleep 5
                     done
                     echo "Health check failed after 60s"
@@ -350,15 +308,15 @@ pipeline {
 
     post {
         failure {
-            echo " Failed — build #${env.BUILD_NUMBER}"
+            echo "Failed -- build #${env.BUILD_NUMBER}"
             sh "docker-compose -f ${COMPOSE_FILE} logs --tail=50 || true"
         }
         success {
-            echo " RFC Connect deployed — build #${env.BUILD_NUMBER} — version ${env.IMAGE_TAG}"
+            echo "RFC Connect deployed -- build #${env.BUILD_NUMBER} -- version ${env.IMAGE_TAG}"
         }
         always {
-            echo "Pipeline finished — build #${env.BUILD_NUMBER}"
-            cleanWs()  // en dernier, après les logs
+            echo "Pipeline finished -- build #${env.BUILD_NUMBER}"
+            cleanWs()
         }
     }
 }
