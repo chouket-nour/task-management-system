@@ -6,183 +6,222 @@ services:
   mongodb:
     image: mongo:6
     container_name: mongodb
-    restart: always
+    restart: unless-stopped
     ports:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
     networks:
       - rfc-network
-
-  # ── Auth Service ──
-  auth-service:
-    build:
-      context: ./backend/auth-service
-      cache_from:
-        - nourchouket2000/rfc-auth-service:latest
-    image: nourchouket2000/rfc-auth-service:${IMAGE_TAG:-latest}
-    container_name: auth-service
-    restart: always
-    ports:
-      - "5001:5001"
-    environment:
-      - PORT=5001
-      - MONGO_URI=mongodb://mongodb:27017/auth-service
-      - JWT_SECRET=supersecret
-      - USER_SERVICE_URL=http://user-service:5002
-    depends_on:
-      - mongodb
-    networks:
-      - rfc-network
-
-  # ── User Service ──
-  user-service:
-    build:
-      context: ./backend/user-service
-      cache_from:
-        - nourchouket2000/rfc-user-service:latest
-    image: nourchouket2000/rfc-user-service:${IMAGE_TAG:-latest}
-    container_name: user-service
-    restart: always
-    ports:
-      - "5002:5002"
-    environment:
-      - PORT=5002
-      - MONGO_URI=mongodb://mongodb:27017/user-service
-      - JWT_SECRET=supersecret
-    depends_on:
-      - mongodb
-    networks:
-      - rfc-network
-
-  # ── Task Service ──
-  task-service:
-    build:
-      context: ./backend/task-service
-      cache_from:
-        - nourchouket2000/rfc-task-service:latest
-    image: nourchouket2000/rfc-task-service:${IMAGE_TAG:-latest}
-    container_name: task-service
-    restart: always
-    ports:
-      - "5003:5003"
-    environment:
-      - PORT=5003
-      - MONGO_URI=mongodb://mongodb:27017/task-service
-      - JWT_SECRET=supersecret
-      - NOTIF_SERVICE_URL=http://notification-service:5006/api/notifications
-    depends_on:
-      - mongodb
-      - notification-service
-    networks:
-      - rfc-network
-
-  # ── Project Service ──
-  project-service:
-    build:
-      context: ./backend/project-service
-      cache_from:
-        - nourchouket2000/rfc-project-service:latest
-    image: nourchouket2000/rfc-project-service:${IMAGE_TAG:-latest}
-    container_name: project-service
-    restart: always
-    ports:
-      - "5004:5004"
-    environment:
-      - PORT=5004
-      - MONGO_URI=mongodb://mongodb:27017/project-service
-      - JWT_SECRET=supersecret
-    depends_on:
-      - mongodb
-    networks:
-      - rfc-network
-
-  # ── Conge Service ──
-  conge-service:
-    build:
-      context: ./backend/conge-service
-      cache_from:
-        - nourchouket2000/rfc-conge-service:latest
-    image: nourchouket2000/rfc-conge-service:${IMAGE_TAG:-latest}
-    container_name: conge-service
-    restart: always
-    ports:
-      - "5005:5005"
-    environment:
-      - PORT=5005
-      - MONGO_URI=mongodb://mongodb:27017/conge-service
-      - JWT_SECRET=supersecret
-      - NOTIF_SERVICE_URL=http://notification-service:5006/api/notifications
-    depends_on:
-      - mongodb
-      - notification-service
-    networks:
-      - rfc-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   # ── Notification Service ──
   notification-service:
-    build:
-      context: ./backend/notification-service
-      cache_from:
-        - nourchouket2000/rfc-notification-service:latest
-    image: nourchouket2000/rfc-notification-service:${IMAGE_TAG:-latest}
+    image: nourchouket2000/rfc-notification-service:${IMAGE_TAG}
     container_name: notification-service
-    restart: always
+    restart: unless-stopped
     ports:
       - "5006:5006"
     environment:
       - PORT=5006
-      - MONGO_URI=mongodb://mongodb:27017/notification-service
-      - JWT_SECRET=supersecret
+      - MONGO_URI=${MONGO_URI_NOTIF}
+      - JWT_SECRET=${JWT_SECRET}
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_healthy
     networks:
       - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5006/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+
+  # ── Auth Service ──
+  auth-service:
+    image: nourchouket2000/rfc-auth-service:${IMAGE_TAG}
+    container_name: auth-service
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - PORT=5001
+      - MONGO_URI=${MONGO_URI_AUTH}
+      - JWT_SECRET=${JWT_SECRET}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5001/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+
+  # ── User Service ──
+  user-service:
+    image: nourchouket2000/rfc-user-service:${IMAGE_TAG}
+    container_name: user-service
+    restart: unless-stopped
+    ports:
+      - "5002:5002"
+    environment:
+      - PORT=5002
+      - MONGO_URI=${MONGO_URI_USER}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5002/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+
+  # ── Task Service ──
+  task-service:
+    image: nourchouket2000/rfc-task-service:${IMAGE_TAG}
+    container_name: task-service
+    restart: unless-stopped
+    ports:
+      - "5003:5003"
+    environment:
+      - PORT=5003
+      - MONGO_URI=${MONGO_URI_TASK}
+      - JWT_SECRET=${JWT_SECRET}
+      - NOTIF_SERVICE_URL=http://notification-service:5006/api/notifications
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    networks:
+      - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5003/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+
+  # ── Project Service ──
+  project-service:
+    image: nourchouket2000/rfc-project-service:${IMAGE_TAG}
+    container_name: project-service
+    restart: unless-stopped
+    ports:
+      - "5004:5004"
+    environment:
+      - PORT=5004
+      - MONGO_URI=${MONGO_URI_PROJECT}
+      - JWT_SECRET=${JWT_SECRET}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5004/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+
+  # ── Conge Service ──
+  conge-service:
+    image: nourchouket2000/rfc-conge-service:${IMAGE_TAG}
+    container_name: conge-service
+    restart: unless-stopped
+    ports:
+      - "5005:5005"
+    environment:
+      - PORT=5005
+      - MONGO_URI=${MONGO_URI_CONGE}
+      - JWT_SECRET=${JWT_SECRET}
+      - NOTIF_SERVICE_URL=http://notification-service:5006/api/notifications
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
+    networks:
+      - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5005/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
 
   # ── API Gateway ──
   api-gateway:
-    build:
-      context: ./backend/api-gateway
-      cache_from:
-        - nourchouket2000/rfc-api-gateway:latest
-    image: nourchouket2000/rfc-api-gateway:${IMAGE_TAG:-latest}
+    image: nourchouket2000/rfc-api-gateway:${IMAGE_TAG}
     container_name: api-gateway
-    restart: always
+    restart: unless-stopped
     ports:
       - "5000:5000"
     environment:
       - PORT=5000
-      - AUTH_SERVICE_URL=http://auth-service:5001
-      - USER_SERVICE_URL=http://user-service:5002
-      - TASK_SERVICE_URL=http://task-service:5003
-      - PROJECT_SERVICE_URL=http://project-service:5004
-      - CONGE_SERVICE_URL=http://conge-service:5005
-      - NOTIF_SERVICE_URL=http://notification-service:5006
+      - AUTH_SERVICE_URL=${AUTH_SERVICE_URL}
+      - USER_SERVICE_URL=${USER_SERVICE_URL}
+      - TASK_SERVICE_URL=${TASK_SERVICE_URL}
+      - PROJECT_SERVICE_URL=${PROJECT_SERVICE_URL}
+      - CONGE_SERVICE_URL=${CONGE_SERVICE_URL}
+      - NOTIF_SERVICE_URL=${NOTIF_SERVICE_URL}
     depends_on:
-      - auth-service
-      - user-service
-      - task-service
-      - project-service
-      - conge-service
-      - notification-service
+      auth-service:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
+      task-service:
+        condition: service_healthy
+      project-service:
+        condition: service_healthy
+      conge-service:
+        condition: service_healthy
+      notification-service:
+        condition: service_healthy
     networks:
       - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:5000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ── Frontend ──
   frontend:
-    build:
-      context: ./frontend
-      cache_from:
-        - nourchouket2000/rfc-frontend:latest
-    image: nourchouket2000/rfc-frontend:${IMAGE_TAG:-latest}
+    image: nourchouket2000/rfc-frontend:${IMAGE_TAG}
     container_name: frontend
-    restart: always
+    restart: unless-stopped
     ports:
       - "80:80"
+    environment:
+      - REACT_APP_API_URL=${REACT_APP_API_URL}
     depends_on:
-      - api-gateway
+      api-gateway:
+        condition: service_healthy
     networks:
       - rfc-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:80"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
 
   # ── Jenkins ──
   jenkins:
@@ -190,7 +229,7 @@ services:
       context: .
       dockerfile: Dockerfile.jenkins
     container_name: jenkins
-    restart: always
+    restart: unless-stopped
     user: root
     ports:
       - "8080:8080"
@@ -205,7 +244,7 @@ services:
   sonarqube:
     image: sonarqube:community
     container_name: sonarqube
-    restart: always
+    restart: unless-stopped
     ports:
       - "9000:9000"
     environment:
@@ -217,12 +256,10 @@ services:
     networks:
       - rfc-network
 
-# ── Networks ──
 networks:
   rfc-network:
     driver: bridge
 
-# ── Volumes ──
 volumes:
   mongo_data:
   jenkins_data:
