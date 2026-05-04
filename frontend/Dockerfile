@@ -1,13 +1,10 @@
 FROM node:22-slim AS build
 
-RUN apk update && apk upgrade --no-cache && \
-    npm install -g npm@10
-
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --only=production
+RUN npm ci
 
 COPY . .
 
