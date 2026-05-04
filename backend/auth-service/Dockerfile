@@ -1,21 +1,15 @@
 FROM node:22-alpine
 
-RUN apk update && apk upgrade --no-cache
+RUN apk update && apk upgrade --no-cache && \
+    npm install -g npm@latest
 
 WORKDIR /app
 
 COPY package*.json ./
 
-RUN npm ci --only=production && \
-    npm install \
-        tar@^7.5.11 \
-        minimatch@^9.0.7 \
-        cross-spawn@^7.0.5 \
-        glob@^10.5.0 \
-        --save-exact
+RUN npm ci --only=production
 
 COPY . .
-
 EXPOSE 5001
 
 CMD ["node", "server.js"]
