@@ -1,4 +1,4 @@
-FROM node:22-alpine AS build
+FROM node:22-slim AS build
 
 RUN apk update && apk upgrade --no-cache && \
     npm install -g npm@10
