@@ -75,66 +75,74 @@ pipeline {
             }
         }
 
-       stage('Tests') {
-    failFast true
-    parallel {
-        stage('Test auth') {
-            steps { sh 'cd backend/auth-service && npm test' }
-            post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
+        stage('Tests') {
+            failFast true
+            parallel {
+                stage('Test auth') {
+                    steps { dir('backend/auth-service') { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
+                }
+                stage('Test user') {
+                    steps { dir('backend/user-service') { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
+                }
+                stage('Test task') {
+                    steps { dir('backend/task-service') { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
+                }
+                stage('Test project') {
+                    steps { dir('backend/project-service') { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
+                }
+                stage('Test conge') {
+                    steps { dir('backend/conge-service') { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
+                }
+                stage('Test notif') {
+                    steps { dir('backend/notification-service') { sh 'npm test' } }
+                    post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
+                }
+            }
         }
-        stage('Test user') {
-            steps { sh 'cd backend/user-service && npm test' }
-            post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
-        }
-        stage('Test task') {
-            steps { sh 'cd backend/task-service && npm test' }
-            post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
-        }
-        stage('Test project') {
-            steps { sh 'cd backend/project-service && npm test' }
-            post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
-        }
-        stage('Test conge') {
-            steps { sh 'cd backend/conge-service && npm test' }
-            post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
-        }
-        stage('Test notif') {
-            steps { sh 'cd backend/notification-service && npm test' }
-            post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
-        }
-    }
-}
-     stage('Verify Coverage') {
-    steps {
-        sh '''
-            echo "=== Recherche de TOUS les lcov.info ==="
-            find /var/jenkins_home/workspace -name "lcov.info" 2>/dev/null | grep -v node_modules
 
-            echo "=== Working directory ==="
-            pwd
+        stage('Verify Coverage') {
+            steps {
+                sh '''
+                    echo "=== Per-service lcov files ==="
+                    for service in auth-service user-service task-service project-service conge-service notification-service; do
+                        lcov_path="backend/${service}/coverage/lcov.info"
+                        if [ -f "$lcov_path" ]; then
+                            lines=$(wc -l < "$lcov_path")
+                            echo "[OK]   $lcov_path ($lines lines)"
+                        else
+                            echo "[MISS] $lcov_path"
+                        fi
+                    done
+                '''
+            }
+        }
 
-            echo "=== Structure backend ==="
-            find . -type d -name "coverage" 2>/dev/null | grep -v node_modules
-        '''
-    }
-}
-      stage('Merge Coverage') {
-    steps {
-        sh '''
-            echo "=== Contenu SF avant correction ==="
-            grep "^SF:" coverage/lcov.info | head -10
-
-            echo "=== Correction des chemins SF ==="
-            # Le fichier racine contient deja tout, juste corriger les SF:
-            # SF:app.js -> SF:backend/auth-service/app.js selon le service
-            cp coverage/lcov.info coverage/lcov.info.bak
-
-            echo "=== SF paths apres verification ==="
-            grep "^SF:" coverage/lcov.info | head -20
-            wc -l coverage/lcov.info
-        '''
-    }
-}
+        stage('Merge Coverage') {
+            steps {
+                sh '''
+                    rm -f coverage/lcov.info
+                    mkdir -p coverage
+                    for service in auth-service user-service task-service project-service conge-service notification-service; do
+                        lcov_path="backend/${service}/coverage/lcov.info"
+                        if [ -f "$lcov_path" ]; then
+                            echo "Merging: $lcov_path"
+                            sed "s|SF:|SF:backend/${service}/|g" "$lcov_path" >> coverage/lcov.info
+                        else
+                            echo "WARNING: $lcov_path not found"
+                        fi
+                    done
+                    echo "=== Merged coverage lines ==="
+                    wc -l coverage/lcov.info
+                    echo "=== SF paths sample ==="
+                    grep "^SF:" coverage/lcov.info | head -20
+                '''
+            }
+        }
 
         stage('SonarQube Analysis') {
             steps {
