@@ -79,27 +79,27 @@ pipeline {
             failFast true
             parallel {
                 stage('Test auth') {
-                    steps { dir('backend/auth-service')         { sh 'npm test -- --coverage' } }
+                    steps { dir('backend/auth-service')         { sh 'npm test ' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
                 }
                 stage('Test user') {
-                    steps { dir('backend/user-service')         { sh 'npm test -- --coverage' } }
+                    steps { dir('backend/user-service')         { sh 'npm test ' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
                 }
                 stage('Test task') {
-                    steps { dir('backend/task-service')         { sh 'npm test -- --coverage' } }
+                    steps { dir('backend/task-service')         { sh 'npm test ' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
                 }
                 stage('Test project') {
-                    steps { dir('backend/project-service')      { sh 'npm test -- --coverage' } }
+                    steps { dir('backend/project-service')      { sh 'npm test ' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
                 }
                 stage('Test conge') {
-                    steps { dir('backend/conge-service')        { sh 'npm test -- --coverage' } }
+                    steps { dir('backend/conge-service')        { sh 'npm test ' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
                 }
                 stage('Test notif') {
-                    steps { dir('backend/notification-service') { sh 'npm test -- --coverage' } }
+                    steps { dir('backend/notification-service') { sh 'npm test ' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
                 }
             }
