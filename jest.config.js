@@ -1,5 +1,3 @@
-const path = require('path');
-
 const services = [
   "auth-service",
   "user-service",
@@ -13,16 +11,16 @@ module.exports = {
   projects: services.map(service => ({
     displayName: service,
     testEnvironment: "node",
-    rootDir: __dirname,
-    roots: [`<rootDir>/backend/${service}`],
+    rootDir: `./backend/${service}`,
+    roots: [`<rootDir>`],
     collectCoverageFrom: [
-      `backend/${service}/**/*.js`,
-      `!backend/${service}/node_modules/**`,
-      `!backend/${service}/coverage/**`,
-      `!backend/${service}/server.js`,
-      `!backend/${service}/config/db.js`
+      `<rootDir>/**/*.js`,
+      `!<rootDir>/node_modules/**`,
+      `!<rootDir>/coverage/**`,
+      `!<rootDir>/server.js`,
+      `!<rootDir>/config/db.js`
     ],
     coverageReporters: ["lcov", "text"],
-    coverageDirectory: path.join(__dirname, `backend/${service}/coverage`)
+    coverageDirectory: `<rootDir>/coverage`
   }))
 };
