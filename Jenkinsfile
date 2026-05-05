@@ -106,15 +106,42 @@ pipeline {
         }
 
         stage('Verify Coverage') {
-            steps {
-                 sh '''
-            echo "=== Recherche de tous les lcov.info ==="
-            find . -name "lcov.info" 2>/dev/null
-            echo "=== Structure coverage ==="
-            find . -path "*/coverage/lcov.info" 2>/dev/null
+    steps {
+        sh '''
+            echo "=== Per-service lcov files ==="
+            for service in auth-service user-service task-service project-service conge-service notification-service; do
+                lcov_path="backend/${service}/coverage/lcov.info"
+                if [ -f "$lcov_path" ]; then
+                    lines=$(wc -l < "$lcov_path")
+                    echo "[OK]   $lcov_path ($lines lines)"
+                else
+                    echo "[MISS] $lcov_path"
+                fi
+            done
         '''
-            }
-        }
+    }
+}
+        stage('Merge Coverage') {
+    steps {
+        sh '''
+            rm -f coverage/lcov.info
+            mkdir -p coverage
+            for service in auth-service user-service task-service project-service conge-service notification-service; do
+                lcov_path="backend/${service}/coverage/lcov.info"
+                if [ -f "$lcov_path" ]; then
+                    echo "Merging: $lcov_path"
+                    sed "s|SF:|SF:backend/${service}/|g" "$lcov_path" >> coverage/lcov.info
+                else
+                    echo "WARNING: $lcov_path not found"
+                fi
+            done
+            echo "=== Merged coverage lines ==="
+            wc -l coverage/lcov.info
+            echo "=== SF paths sample ==="
+            grep "^SF:" coverage/lcov.info | head -20
+        '''
+    }
+}
 
         stage('SonarQube Analysis') {
             steps {
