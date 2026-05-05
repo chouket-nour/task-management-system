@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test":  "jest --config ../../jest.config.js --selectProjects user-service --coverage --forceExit"
+    "test":  "jest --config ../../jest.config.js --selectProjects user-service --coverage --forceExit  --rootDir "
 
   },
   "keywords": [],
