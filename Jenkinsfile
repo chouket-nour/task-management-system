@@ -79,39 +79,43 @@ pipeline {
             failFast true
             parallel {
                 stage('Test auth') {
-                    steps { dir('backend/auth-service')         { sh 'npm test' } }
+                    steps { dir('backend/auth-service')         { sh 'npm test -- --coverage' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
                 }
                 stage('Test user') {
-                    steps { dir('backend/user-service')         { sh 'npm test' } }
+                    steps { dir('backend/user-service')         { sh 'npm test -- --coverage' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
                 }
                 stage('Test task') {
-                    steps { dir('backend/task-service')         { sh 'npm test' } }
+                    steps { dir('backend/task-service')         { sh 'npm test -- --coverage' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
                 }
                 stage('Test project') {
-                    steps { dir('backend/project-service')      { sh 'npm test' } }
+                    steps { dir('backend/project-service')      { sh 'npm test -- --coverage' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
                 }
                 stage('Test conge') {
-                    steps { dir('backend/conge-service')        { sh 'npm test' } }
+                    steps { dir('backend/conge-service')        { sh 'npm test -- --coverage' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
                 }
                 stage('Test notif') {
-                    steps { dir('backend/notification-service') { sh 'npm test' } }
+                    steps { dir('backend/notification-service') { sh 'npm test -- --coverage' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
                 }
             }
         }
 
-        stage('Merge Coverage') {
+        stage('Verify Coverage') {
             steps {
                 sh '''
-                    npm ci --prefer-offline
-                    mkdir -p coverage
-                    npm run merge-coverage
-                    echo "Coverage mergee dans coverage/lcov.info"
+                    echo "=== Vérification des rapports de coverage ==="
+                    for svc in auth-service user-service task-service project-service conge-service notification-service; do
+                        if [ -f "backend/${svc}/coverage/lcov.info" ]; then
+                            echo "[OK] backend/${svc}/coverage/lcov.info trouvé"
+                        else
+                            echo "[WARN] backend/${svc}/coverage/lcov.info manquant"
+                        fi
+                    done
                 '''
             }
         }
