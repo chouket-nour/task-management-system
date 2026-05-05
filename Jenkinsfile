@@ -107,16 +107,12 @@ pipeline {
 
         stage('Verify Coverage') {
             steps {
-                sh '''
-                    echo "=== Vérification des rapports de coverage ==="
-                    for svc in auth-service user-service task-service project-service conge-service notification-service; do
-                        if [ -f "backend/${svc}/coverage/lcov.info" ]; then
-                            echo "[OK] backend/${svc}/coverage/lcov.info trouvé"
-                        else
-                            echo "[WARN] backend/${svc}/coverage/lcov.info manquant"
-                        fi
-                    done
-                '''
+                 sh '''
+            echo "=== Recherche de tous les lcov.info ==="
+            find . -name "lcov.info" 2>/dev/null
+            echo "=== Structure coverage ==="
+            find . -path "*/coverage/lcov.info" 2>/dev/null
+        '''
             }
         }
 
