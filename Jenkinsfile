@@ -108,16 +108,11 @@ pipeline {
         stage('Verify Coverage') {
             steps {
                 sh '''
-                    echo "=== Per-service lcov files ==="
-                    for service in auth-service user-service task-service project-service conge-service notification-service; do
-                        lcov_path="backend/${service}/coverage/lcov.info"
-                        if [ -f "$lcov_path" ]; then
-                            lines=$(wc -l < "$lcov_path")
-                            echo "[OK]   $lcov_path ($lines lines)"
-                        else
-                            echo "[MISS] $lcov_path"
-                        fi
-                    done
+                    echo "=== TOUS les lcov.info dans le workspace ==="
+                    find /var/jenkins_home/workspace/task-management-system -name "lcov.info" 2>/dev/null | grep -v node_modules
+
+                    echo "=== TOUS les dossiers coverage ==="
+                    find /var/jenkins_home/workspace/task-management-system -type d -name "coverage" 2>/dev/null | grep -v node_modules
                 '''
             }
         }
