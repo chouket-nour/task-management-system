@@ -1,3 +1,5 @@
+const path = require('path');
+
 const services = [
   "auth-service",
   "user-service",
@@ -21,6 +23,6 @@ module.exports = {
       `!backend/${service}/config/db.js`
     ],
     coverageReporters: ["lcov", "text"],
-    coverageDirectory: `backend/${service}/coverage`
+    coverageDirectory: path.join(__dirname, `backend/${service}/coverage`)
   }))
 };
