@@ -1,12 +1,7 @@
 const path = require('path');
-
 const services = [
-  "auth-service",
-  "user-service",
-  "task-service",
-  "project-service",
-  "conge-service",
-  "notification-service"
+  "auth-service", "user-service", "task-service",
+  "project-service", "conge-service", "notification-service"
 ];
 
 module.exports = {
@@ -23,6 +18,7 @@ module.exports = {
       `!<rootDir>/config/db.js`
     ],
     coverageReporters: ["lcov", "text"],
-    coverageDirectory: `<rootDir>/coverage`
+    // Use absolute path so it always resolves to backend/<service>/coverage
+    coverageDirectory: path.resolve(__dirname, `backend/${service}/coverage`)
   }))
 };
