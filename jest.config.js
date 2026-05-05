@@ -1,3 +1,5 @@
+const path = require('path');
+
 const services = [
   "auth-service",
   "user-service",
@@ -11,7 +13,7 @@ module.exports = {
   projects: services.map(service => ({
     displayName: service,
     testEnvironment: "node",
-    rootDir: `./backend/${service}`,
+    rootDir: path.resolve(__dirname, `backend/${service}`),
     roots: [`<rootDir>`],
     collectCoverageFrom: [
       `<rootDir>/**/*.js`,
