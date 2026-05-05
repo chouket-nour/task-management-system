@@ -75,36 +75,35 @@ pipeline {
             }
         }
 
-        stage('Tests') {
-            failFast true
-            parallel {
-                stage('Test auth') {
-                    steps { dir('backend/auth-service')         { sh 'npm test ' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
-                }
-                stage('Test user') {
-                    steps { dir('backend/user-service')         { sh 'npm test ' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
-                }
-                stage('Test task') {
-                    steps { dir('backend/task-service')         { sh 'npm test ' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
-                }
-                stage('Test project') {
-                    steps { dir('backend/project-service')      { sh 'npm test ' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
-                }
-                stage('Test conge') {
-                    steps { dir('backend/conge-service')        { sh 'npm test ' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
-                }
-                stage('Test notif') {
-                    steps { dir('backend/notification-service') { sh 'npm test ' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
-                }
-            }
+       stage('Tests') {
+    failFast true
+    parallel {
+        stage('Test auth') {
+            steps { sh 'cd backend/auth-service && npm test' }
+            post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
         }
-
+        stage('Test user') {
+            steps { sh 'cd backend/user-service && npm test' }
+            post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
+        }
+        stage('Test task') {
+            steps { sh 'cd backend/task-service && npm test' }
+            post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
+        }
+        stage('Test project') {
+            steps { sh 'cd backend/project-service && npm test' }
+            post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
+        }
+        stage('Test conge') {
+            steps { sh 'cd backend/conge-service && npm test' }
+            post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
+        }
+        stage('Test notif') {
+            steps { sh 'cd backend/notification-service && npm test' }
+            post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
+        }
+    }
+}
         stage('Verify Coverage') {
     steps {
         sh '''
