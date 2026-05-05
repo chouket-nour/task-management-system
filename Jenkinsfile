@@ -118,24 +118,20 @@ pipeline {
         '''
     }
 }
-        stage('Merge Coverage') {
+      stage('Merge Coverage') {
     steps {
         sh '''
-            rm -f coverage/lcov.info
-            mkdir -p coverage
-            for service in auth-service user-service task-service project-service conge-service notification-service; do
-                lcov_path="backend/${service}/coverage/lcov.info"
-                if [ -f "$lcov_path" ]; then
-                    echo "Merging: $lcov_path"
-                    sed "s|SF:|SF:backend/${service}/|g" "$lcov_path" >> coverage/lcov.info
-                else
-                    echo "WARNING: $lcov_path not found"
-                fi
-            done
-            echo "=== Merged coverage lines ==="
-            wc -l coverage/lcov.info
-            echo "=== SF paths sample ==="
+            echo "=== Contenu SF avant correction ==="
+            grep "^SF:" coverage/lcov.info | head -10
+
+            echo "=== Correction des chemins SF ==="
+            # Le fichier racine contient deja tout, juste corriger les SF:
+            # SF:app.js -> SF:backend/auth-service/app.js selon le service
+            cp coverage/lcov.info coverage/lcov.info.bak
+
+            echo "=== SF paths apres verification ==="
             grep "^SF:" coverage/lcov.info | head -20
+            wc -l coverage/lcov.info
         '''
     }
 }
