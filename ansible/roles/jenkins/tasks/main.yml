@@ -30,6 +30,12 @@
   args:
     creates: /etc/apt/sources.list.d/jenkins.list
 
+- name: Mettre à jour init-system-helpers
+  apt:
+    name: init-system-helpers
+    state: latest
+    update_cache: true
+
 - name: Installer Jenkins
   apt:
     name: jenkins
