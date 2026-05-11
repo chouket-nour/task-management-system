@@ -34,22 +34,18 @@
 # ══════════════════════════════════════════════
 # 3. JENKINS
 # ══════════════════════════════════════════════
-- name: Télécharger la clé Jenkins
-  get_url:
-    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-    dest: /tmp/jenkins.key
-    mode: '0644'
-
-- name: Convertir et installer la clé Jenkins (gpg --dearmor)
-  shell: gpg --dearmor < /tmp/jenkins.key > /usr/share/keyrings/jenkins-keyring.gpg
+- name: Importer la clé Jenkins depuis le keyserver Ubuntu
+  shell: |
+    gpg --keyserver keyserver.ubuntu.com --recv-keys 7198F4B714ABFC68
+    gpg --export 7198F4B714ABFC68 > /usr/share/keyrings/jenkins-keyring.gpg
   args:
     creates: /usr/share/keyrings/jenkins-keyring.gpg
 
 - name: Ajouter le repo Jenkins
-  apt_repository:
-    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/"
-    state: present
-    filename: jenkins
+  copy:
+    content: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/\n"
+    dest: /etc/apt/sources.list.d/jenkins.list
+    mode: '0644'
 
 - name: Installer Jenkins
   apt:
@@ -87,10 +83,10 @@
     creates: /usr/share/keyrings/docker-keyring.gpg
 
 - name: Ajouter le repo Docker
-  apt_repository:
-    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable"
-    state: present
-    filename: docker
+  copy:
+    content: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable\n"
+    dest: /etc/apt/sources.list.d/docker.list
+    mode: '0644'
 
 - name: Installer Docker
   apt:
