@@ -1,0 +1,137 @@
+---
+# ══════════════════════════════════════════════
+# 1. MISE A JOUR SYSTEME
+# ══════════════════════════════════════════════
+- name: Mettre à jour les paquets
+  apt:
+    update_cache: true
+    upgrade: dist
+
+# ══════════════════════════════════════════════
+# 2. JAVA
+# ══════════════════════════════════════════════
+- name: Installer Java 11
+  apt:
+    name: openjdk-11-jdk
+    state: present
+
+# ══════════════════════════════════════════════
+# 3. JENKINS
+# ══════════════════════════════════════════════
+- name: Ajouter la clé Jenkins
+  apt_key:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    state: present
+
+- name: Ajouter le repo Jenkins
+  apt_repository:
+    repo: "deb https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+
+- name: Installer Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: true
+
+- name: Démarrer et activer Jenkins
+  systemd:
+    name: jenkins
+    state: started
+    enabled: true
+
+# ══════════════════════════════════════════════
+# 4. DOCKER
+# ══════════════════════════════════════════════
+- name: Installer les dépendances Docker
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - software-properties-common
+    state: present
+
+- name: Ajouter la clé Docker
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+
+- name: Ajouter le repo Docker
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu bionic stable"
+    state: present
+
+- name: Installer Docker
+  apt:
+    name: docker-ce
+    state: present
+    update_cache: true
+
+- name: Ajouter jenkins au groupe docker
+  user:
+    name: jenkins
+    groups: docker
+    append: true
+
+- name: Démarrer et activer Docker
+  systemd:
+    name: docker
+    state: started
+    enabled: true
+
+# ══════════════════════════════════════════════
+# 5. KUBECTL
+# ══════════════════════════════════════════════
+- name: Télécharger kubectl
+  get_url:
+    url: https://dl.k8s.io/release/v1.20.0/bin/linux/amd64/kubectl
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+
+# ══════════════════════════════════════════════
+# 6. HELM
+# ══════════════════════════════════════════════
+- name: Télécharger le script Helm
+  get_url:
+    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+    dest: /tmp/get-helm.sh
+    mode: '0755'
+
+- name: Installer Helm
+  command: /tmp/get-helm.sh
+  args:
+    creates: /usr/local/bin/helm
+
+# ══════════════════════════════════════════════
+# 7. AKS-ENGINE
+# ══════════════════════════════════════════════
+- name: Télécharger aks-engine
+  get_url:
+    url: https://github.com/Azure/aks-engine/releases/download/v0.75.3/aks-engine-v0.75.3-linux-amd64.tar.gz
+    dest: /tmp/aks-engine.tar.gz
+
+- name: Extraire aks-engine
+  unarchive:
+    src: /tmp/aks-engine.tar.gz
+    dest: /tmp/
+    remote_src: true
+
+- name: Installer aks-engine
+  copy:
+    src: /tmp/aks-engine-v0.75.3-linux-amd64/aks-engine
+    dest: /usr/local/bin/aks-engine
+    mode: '0755'
+    remote_src: true
+
+# ══════════════════════════════════════════════
+# 8. MOT DE PASSE JENKINS
+# ══════════════════════════════════════════════
+- name: Récupérer le mot de passe initial Jenkins
+  command: cat /var/lib/jenkins/secrets/initialAdminPassword
+  register: jenkins_password
+  changed_when: false
+
+- name: Afficher le mot de passe Jenkins
+  debug:
+    msg: "Mot de passe Jenkins : {{ jenkins_password.stdout }}"
