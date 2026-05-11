@@ -7,6 +7,17 @@
     update_cache: true
     upgrade: dist
 
+- name: Vérifier si un redémarrage est nécessaire
+  stat:
+    path: /var/run/reboot-required
+  register: reboot_required
+
+- name: Redémarrer si nécessaire (*** System restart required ***)
+  reboot:
+    msg: "Redémarrage requis après mise à jour du système"
+    reboot_timeout: 300
+  when: reboot_required.stat.exists
+
 # ══════════════════════════════════════════════
 # 2. JAVA
 # ══════════════════════════════════════════════
@@ -23,17 +34,22 @@
 # ══════════════════════════════════════════════
 # 3. JENKINS
 # ══════════════════════════════════════════════
-- name: Ajouter la clé Jenkins (modern keyring)
-  shell: |
-    curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+- name: Télécharger la clé Jenkins
+  get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    dest: /tmp/jenkins.key
+    mode: '0644'
+
+- name: Convertir et installer la clé Jenkins (gpg --dearmor)
+  shell: gpg --dearmor < /tmp/jenkins.key > /usr/share/keyrings/jenkins-keyring.gpg
   args:
-    creates: /usr/share/keyrings/jenkins-keyring.asc
+    creates: /usr/share/keyrings/jenkins-keyring.gpg
 
 - name: Ajouter le repo Jenkins
-  shell: |
-    echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
-  args:
-    creates: /etc/apt/sources.list.d/jenkins.list
+  apt_repository:
+    repo: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/"
+    state: present
+    filename: jenkins
 
 - name: Installer Jenkins
   apt:
@@ -59,17 +75,22 @@
       - software-properties-common
     state: present
 
-- name: Ajouter la clé Docker
-  shell: |
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-keyring.gpg
+- name: Télécharger la clé Docker
+  get_url:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    dest: /tmp/docker.key
+    mode: '0644'
+
+- name: Convertir et installer la clé Docker (gpg --dearmor)
+  shell: gpg --dearmor < /tmp/docker.key > /usr/share/keyrings/docker-keyring.gpg
   args:
     creates: /usr/share/keyrings/docker-keyring.gpg
 
 - name: Ajouter le repo Docker
-  shell: |
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
-  args:
-    creates: /etc/apt/sources.list.d/docker.list
+  apt_repository:
+    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable"
+    state: present
+    filename: docker
 
 - name: Installer Docker
   apt:
