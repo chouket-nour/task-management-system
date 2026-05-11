@@ -10,10 +10,15 @@
 # ══════════════════════════════════════════════
 # 2. JAVA
 # ══════════════════════════════════════════════
-- name: Installer Java 11
+- name: Installer Java 21
   apt:
-    name: openjdk-11-jdk
+    name: openjdk-21-jdk
     state: present
+
+- name: Définir Java 21 comme version par défaut
+  alternatives:
+    name: java
+    path: /usr/lib/jvm/java-21-openjdk-amd64/bin/java
 
 # ══════════════════════════════════════════════
 # 3. JENKINS
