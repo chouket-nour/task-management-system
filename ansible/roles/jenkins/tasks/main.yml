@@ -18,15 +18,15 @@
 # ══════════════════════════════════════════════
 # 3. JENKINS
 # ══════════════════════════════════════════════
-- name: Ajouter la clé Jenkins
+- name: Ajouter la clé Jenkins via apt-key
   shell: |
-    curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg
+    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 7198F4B714ABFC68
   args:
-    creates: /usr/share/keyrings/jenkins-keyring.gpg
+    warn: false
 
 - name: Ajouter le repo Jenkins
   shell: |
-    echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+    echo "deb https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
   args:
     creates: /etc/apt/sources.list.d/jenkins.list
 
@@ -59,6 +59,7 @@
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-keyring.gpg
   args:
     creates: /usr/share/keyrings/docker-keyring.gpg
+    warn: false
 
 - name: Ajouter le repo Docker
   shell: |
