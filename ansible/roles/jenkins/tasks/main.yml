@@ -123,21 +123,21 @@
 # ══════════════════════════════════════════════
 # 7. AKS-ENGINE
 # ══════════════════════════════════════════════
-- name: Télécharger aks-engine
+- name: Télécharger aks-engine-azurestack
   get_url:
-    url: https://github.com/Azure/aks-engine/releases/download/v0.75.3/aks-engine-v0.75.3-linux-amd64.tar.gz
+    url: https://github.com/Azure/aks-engine-azurestack/releases/download/v0.80.2/aks-engine-azurestack-v0.80.2-linux-amd64.tar.gz
     dest: /tmp/aks-engine.tar.gz
 
-- name: Extraire aks-engine
+- name: Extraire aks-engine-azurestack
   unarchive:
     src: /tmp/aks-engine.tar.gz
     dest: /tmp/
     remote_src: true
 
-- name: Installer aks-engine
+- name: Installer aks-engine-azurestack
   copy:
-    src: /tmp/aks-engine-v0.75.3-linux-amd64/aks-engine
-    dest: /usr/local/bin/aks-engine
+    src: /tmp/aks-engine-azurestack-v0.80.2-linux-amd64/aks-engine-azurestack
+    dest: /usr/local/bin/aks-engine-azurestack
     mode: '0755'
     remote_src: true
 
