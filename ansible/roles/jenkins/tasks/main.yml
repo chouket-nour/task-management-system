@@ -23,25 +23,17 @@
 # ══════════════════════════════════════════════
 # 3. JENKINS
 # ══════════════════════════════════════════════
-- name: Ajouter la clé Jenkins via apt-key
+- name: Ajouter la clé Jenkins (modern keyring)
   shell: |
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 7198F4B714ABFC68
+    curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+  args:
+    creates: /usr/share/keyrings/jenkins-keyring.asc
 
 - name: Ajouter le repo Jenkins
   shell: |
-    echo "deb https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+    echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
   args:
     creates: /etc/apt/sources.list.d/jenkins.list
-
-- name: Ajouter le repo backports Ubuntu
-  shell: |
-    echo "deb http://azure.archive.ubuntu.com/ubuntu bionic-backports main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/backports.list > /dev/null
-  args:
-    creates: /etc/apt/sources.list.d/backports.list
-
-- name: Mettre à jour init-system-helpers depuis backports
-  shell: |
-    sudo apt-get update && sudo apt-get install -y -t bionic-backports init-system-helpers
 
 - name: Installer Jenkins
   apt:
@@ -75,7 +67,7 @@
 
 - name: Ajouter le repo Docker
   shell: |
-    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-keyring.gpg] https://download.docker.com/linux/ubuntu bionic stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
   args:
     creates: /etc/apt/sources.list.d/docker.list
 
