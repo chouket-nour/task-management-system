@@ -26,8 +26,6 @@
 - name: Ajouter la clé Jenkins via apt-key
   shell: |
     sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 7198F4B714ABFC68
-  args:
-    warn: false
 
 - name: Ajouter le repo Jenkins
   shell: |
@@ -44,8 +42,6 @@
 - name: Mettre à jour init-system-helpers depuis backports
   shell: |
     sudo apt-get update && sudo apt-get install -y -t bionic-backports init-system-helpers
-  args:
-    warn: false
 
 - name: Installer Jenkins
   apt:
@@ -76,7 +72,6 @@
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-keyring.gpg
   args:
     creates: /usr/share/keyrings/docker-keyring.gpg
-    warn: false
 
 - name: Ajouter le repo Docker
   shell: |
