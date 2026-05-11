@@ -30,11 +30,17 @@
   args:
     creates: /etc/apt/sources.list.d/jenkins.list
 
-- name: Mettre à jour init-system-helpers
-  apt:
-    name: init-system-helpers
-    state: latest
-    update_cache: true
+- name: Ajouter le repo backports Ubuntu
+  shell: |
+    echo "deb http://azure.archive.ubuntu.com/ubuntu bionic-backports main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/backports.list > /dev/null
+  args:
+    creates: /etc/apt/sources.list.d/backports.list
+
+- name: Mettre à jour init-system-helpers depuis backports
+  shell: |
+    sudo apt-get update && sudo apt-get install -y -t bionic-backports init-system-helpers
+  args:
+    warn: false
 
 - name: Installer Jenkins
   apt:
