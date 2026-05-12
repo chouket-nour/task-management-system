@@ -64,7 +64,7 @@ resource "azurestack_network_security_group" "jumpbox" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "22"
-    source_address_prefix      = var.admin_ip
+    source_address_prefix      = "*"
     destination_address_prefix = "*"
   }
 
