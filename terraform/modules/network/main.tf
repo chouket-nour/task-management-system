@@ -122,7 +122,7 @@ resource "azurestack_network_security_group" "tools" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "8080"
-    source_address_prefix      = var.admin_ip
+    source_address_prefix      = var.subnet_jumpbox_cidr  
     destination_address_prefix = "*"
   }
 
