@@ -1,26 +1,40 @@
 ---
-# ══════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════
 # 1. MISE A JOUR SYSTEME
-# ══════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════
 - name: Mettre à jour les paquets
   apt:
     update_cache: true
     upgrade: dist
+    cache_valid_time: 3600
+
+- name: Installer les utilitaires de base
+  apt:
+    name:
+      - curl
+      - wget
+      - gnupg
+      - apt-transport-https
+      - ca-certificates
+      - software-properties-common
+      - unzip
+      - git
+    state: present
 
 - name: Vérifier si un redémarrage est nécessaire
   stat:
     path: /var/run/reboot-required
   register: reboot_required
 
-- name: Redémarrer si nécessaire (*** System restart required ***)
+- name: Redémarrer si nécessaire
   reboot:
-    msg: "Redémarrage requis après mise à jour du système"
+    msg: "Redémarrage requis après mise à jour"
     reboot_timeout: 300
   when: reboot_required.stat.exists
 
-# ══════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════
 # 2. JAVA
-# ══════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════
 - name: Installer Java 21
   apt:
     name: openjdk-21-jdk
@@ -31,10 +45,19 @@
     name: java
     path: /usr/lib/jvm/java-21-openjdk-amd64/bin/java
 
-# ══════════════════════════════════════════════
+- name: Vérifier Java
+  command: java -version
+  register: java_version
+  changed_when: false
+
+- name: Afficher version Java
+  debug:
+    msg: "Java installé : {{ java_version.stderr }}"
+
+# ══════════════════════════════════════════════════════════════
 # 3. JENKINS
-# ══════════════════════════════════════════════
-- name: Importer la clé Jenkins depuis le keyserver Ubuntu
+# ══════════════════════════════════════════════════════════════
+- name: Importer la clé Jenkins
   shell: |
     gpg --keyserver keyserver.ubuntu.com --recv-keys 7198F4B714ABFC68
     gpg --export 7198F4B714ABFC68 > /usr/share/keyrings/jenkins-keyring.gpg
@@ -59,25 +82,22 @@
     state: started
     enabled: true
 
-# ══════════════════════════════════════════════
-# 4. DOCKER
-# ══════════════════════════════════════════════
-- name: Installer les dépendances Docker
-  apt:
-    name:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - software-properties-common
-    state: present
+- name: Attendre que Jenkins soit prêt (port 8080)
+  wait_for:
+    port: 8080
+    delay: 10
+    timeout: 120
 
+# ══════════════════════════════════════════════════════════════
+# 4. DOCKER
+# ══════════════════════════════════════════════════════════════
 - name: Télécharger la clé Docker
   get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
     dest: /tmp/docker.key
     mode: '0644'
 
-- name: Convertir et installer la clé Docker (gpg --dearmor)
+- name: Convertir et installer la clé Docker
   shell: gpg --dearmor < /tmp/docker.key > /usr/share/keyrings/docker-keyring.gpg
   args:
     creates: /usr/share/keyrings/docker-keyring.gpg
@@ -94,30 +114,179 @@
     state: present
     update_cache: true
 
-- name: Ajouter jenkins au groupe docker
-  user:
-    name: jenkins
-    groups: docker
-    append: true
-
 - name: Démarrer et activer Docker
   systemd:
     name: docker
     state: started
     enabled: true
 
-# ══════════════════════════════════════════════
-# 5. KUBECTL
-# ══════════════════════════════════════════════
+- name: Vérifier Docker
+  command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Afficher version Docker
+  debug:
+    msg: "Docker installé : {{ docker_version.stdout }}"
+
+# ══════════════════════════════════════════════════════════════
+# 5. DOCKER COMPOSE (manquait dans ton playbook original)
+# ══════════════════════════════════════════════════════════════
+- name: Obtenir la dernière version de docker-compose
+  uri:
+    url: https://api.github.com/repos/docker/compose/releases/latest
+    return_content: true
+    headers:
+      Accept: application/vnd.github.v3+json
+  register: compose_release
+
+- name: Afficher la version docker-compose qui sera installée
+  debug:
+    msg: "Version docker-compose : {{ compose_release.json.tag_name }}"
+
+- name: Installer docker-compose
+  get_url:
+    url: "https://github.com/docker/compose/releases/download/{{ compose_release.json.tag_name }}/docker-compose-linux-x86_64"
+    dest: /usr/local/bin/docker-compose
+    mode: '0755'
+    owner: root
+    group: root
+
+- name: Vérifier docker-compose
+  command: docker-compose --version
+  register: compose_version
+  changed_when: false
+
+- name: Afficher version docker-compose
+  debug:
+    msg: "docker-compose installé : {{ compose_version.stdout }}"
+
+# ══════════════════════════════════════════════════════════════
+# 6. AJOUTER JENKINS AU GROUPE DOCKER
+# ══════════════════════════════════════════════════════════════
+- name: Ajouter jenkins au groupe docker
+  user:
+    name: jenkins
+    groups: docker
+    append: true
+
+- name: Redémarrer Jenkins pour appliquer le groupe docker
+  systemd:
+    name: jenkins
+    state: restarted
+
+- name: Attendre que Jenkins redémarre
+  wait_for:
+    port: 8080
+    delay: 15
+    timeout: 120
+
+- name: Vérifier que jenkins peut utiliser Docker
+  command: docker ps
+  become: true
+  become_user: jenkins
+  environment:
+    HOME: /var/lib/jenkins
+  register: docker_check
+  changed_when: false
+  failed_when: false
+
+- name: Résultat accès Docker pour jenkins
+  debug:
+    msg: "{{ docker_check.stdout | default(docker_check.stderr) }}"
+
+# ══════════════════════════════════════════════════════════════
+# 7. DOSSIERS DE CACHE JENKINS (manquait dans ton playbook original)
+# ══════════════════════════════════════════════════════════════
+- name: Créer les dossiers de cache npm
+  file:
+    path: /var/lib/jenkins/.npm-cache
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Créer le dossier de cache mongodb-binaries
+  file:
+    path: /var/lib/jenkins/.cache/mongodb-binaries
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Créer le dossier de cache trivy
+  file:
+    path: /var/lib/jenkins/.cache/trivy
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Vérifier les dossiers de cache créés
+  command: ls -la /var/lib/jenkins/.cache/
+  register: cache_dirs
+  changed_when: false
+
+- name: Afficher les dossiers de cache
+  debug:
+    msg: "{{ cache_dirs.stdout_lines }}"
+
+# ══════════════════════════════════════════════════════════════
+# 8. TRIVY (manquait dans ton playbook original)
+# ══════════════════════════════════════════════════════════════
+- name: Télécharger la clé Trivy
+  get_url:
+    url: https://aquasecurity.github.io/trivy-repo/deb/public.key
+    dest: /tmp/trivy.key
+    mode: '0644'
+
+- name: Installer la clé Trivy
+  shell: gpg --dearmor < /tmp/trivy.key > /usr/share/keyrings/trivy-keyring.gpg
+  args:
+    creates: /usr/share/keyrings/trivy-keyring.gpg
+
+- name: Ajouter le repo Trivy
+  copy:
+    content: "deb [signed-by=/usr/share/keyrings/trivy-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main\n"
+    dest: /etc/apt/sources.list.d/trivy.list
+    mode: '0644'
+
+- name: Installer Trivy
+  apt:
+    name: trivy
+    state: present
+    update_cache: true
+
+- name: Vérifier Trivy
+  command: trivy --version
+  register: trivy_version
+  changed_when: false
+
+- name: Afficher version Trivy
+  debug:
+    msg: "Trivy installé : {{ trivy_version.stdout }}"
+
+# ══════════════════════════════════════════════════════════════
+# 9. KUBECTL
+# ══════════════════════════════════════════════════════════════
 - name: Télécharger kubectl
   get_url:
-    url: https://dl.k8s.io/release/v1.20.0/bin/linux/amd64/kubectl
+    url: https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
     dest: /usr/local/bin/kubectl
     mode: '0755'
 
-# ══════════════════════════════════════════════
-# 6. HELM
-# ══════════════════════════════════════════════
+- name: Vérifier kubectl
+  command: kubectl version --client
+  register: kubectl_version
+  changed_when: false
+
+- name: Afficher version kubectl
+  debug:
+    msg: "kubectl installé : {{ kubectl_version.stdout }}"
+
+# ══════════════════════════════════════════════════════════════
+# 10. HELM
+# ══════════════════════════════════════════════════════════════
 - name: Télécharger le script Helm
   get_url:
     url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
@@ -129,35 +298,40 @@
   args:
     creates: /usr/local/bin/helm
 
-# ══════════════════════════════════════════════
-# 7. AKS-ENGINE
-# ══════════════════════════════════════════════
-- name: Télécharger aks-engine-azurestack
-  get_url:
-    url: https://github.com/Azure/aks-engine-azurestack/releases/download/v0.80.2/aks-engine-azurestack-v0.80.2-linux-amd64.tar.gz
-    dest: /tmp/aks-engine.tar.gz
+- name: Vérifier Helm
+  command: helm version
+  register: helm_version
+  changed_when: false
 
-- name: Extraire aks-engine-azurestack
-  unarchive:
-    src: /tmp/aks-engine.tar.gz
-    dest: /tmp/
-    remote_src: true
+- name: Afficher version Helm
+  debug:
+    msg: "Helm installé : {{ helm_version.stdout }}"
 
-- name: Installer aks-engine-azurestack
-  copy:
-    src: /tmp/aks-engine-azurestack-v0.80.2-linux-amd64/aks-engine-azurestack
-    dest: /usr/local/bin/aks-engine-azurestack
-    mode: '0755'
-    remote_src: true
-
-# ══════════════════════════════════════════════
-# 8. MOT DE PASSE JENKINS
-# ══════════════════════════════════════════════
+# ══════════════════════════════════════════════════════════════
+# 11. VERIFICATION FINALE
+# ══════════════════════════════════════════════════════════════
 - name: Récupérer le mot de passe initial Jenkins
   command: cat /var/lib/jenkins/secrets/initialAdminPassword
   register: jenkins_password
   changed_when: false
+  failed_when: false
 
-- name: Afficher le mot de passe Jenkins
+- name: Résumé de l'installation
   debug:
-    msg: "Mot de passe Jenkins : {{ jenkins_password.stdout }}"
+    msg:
+      - "============================================"
+      - "      INSTALLATION TERMINÉE"
+      - "============================================"
+      - "Java        : {{ java_version.stderr | regex_search('openjdk version.*') }}"
+      - "Docker      : {{ docker_version.stdout }}"
+      - "Compose     : {{ compose_version.stdout }}"
+      - "Trivy       : {{ trivy_version.stdout.split()[1] }}"
+      - "kubectl     : {{ kubectl_version.stdout }}"
+      - "Helm        : {{ helm_version.stdout }}"
+      - "Jenkins URL : http://{{ ansible_host }}:8080"
+      - "Mot de passe: {{ jenkins_password.stdout | default('déjà configuré') }}"
+      - "============================================"
+      - "CACHE NPM   : /var/lib/jenkins/.npm-cache"
+      - "CACHE MONGO : /var/lib/jenkins/.cache/mongodb-binaries"
+      - "CACHE TRIVY : /var/lib/jenkins/.cache/trivy"
+      - "============================================"
