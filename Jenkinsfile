@@ -3,24 +3,50 @@ pipeline {
     tools { nodejs 'NodeJS' }
 
     parameters {
-        choice(name: 'ENV',         choices: ['dev', 'staging', 'prod'], description: 'Environnement cible')
+        choice(name: 'ENV',           choices: ['dev', 'staging', 'prod'], description: 'Environnement cible')
+        choice(name: 'DEPLOY_TARGET', choices: ['local', 'k8s'],           description: 'Déploiement local (docker-compose) ou cloud (Kubernetes)')
         booleanParam(name: 'ROLLBACK',    defaultValue: false, description: 'Rollback vers la version précédente')
         booleanParam(name: 'SKIP_DOCKER', defaultValue: false, description: 'Passer le build/push Docker')
     }
 
     environment {
+        // ── Registry ──
         REGISTRY         = "nourchouket2000"
         BACKEND_SERVICES = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
+
+        // ── MongoDB URIs (pas de mot de passe → pas dans Credentials) ──
+        MONGO_URI_AUTH    = "mongodb://mongodb:27017/auth"
+        MONGO_URI_USER    = "mongodb://mongodb:27017/user"
+        MONGO_URI_TASK    = "mongodb://mongodb:27017/task"
+        MONGO_URI_PROJECT = "mongodb://mongodb:27017/project"
+        MONGO_URI_CONGE   = "mongodb://mongodb:27017/conge"
+        MONGO_URI_NOTIF   = "mongodb://mongodb:27017/notif"
+
+        // ── URLs des services (pas secrètes → pas dans Credentials) ──
+        AUTH_SERVICE_URL    = "http://auth-service:5001"
+        USER_SERVICE_URL    = "http://user-service:5002"
+        TASK_SERVICE_URL    = "http://task-service:5003"
+        PROJECT_SERVICE_URL = "http://project-service:5004"
+        CONGE_SERVICE_URL   = "http://conge-service:5005"
+        NOTIF_SERVICE_URL   = "http://notification-service:5006"
+        REACT_APP_API_URL   = "http://localhost:5000"
+
+        // ── Docker & Build ──
+        DOCKER_BUILDKIT  = "1"
+        COMPOSE_FILE     = "${env.WORKSPACE}/docker-compose.yml"
+
+        // ── Cache ──
         NPM_CONFIG_CACHE            = "/var/jenkins_home/.npm-cache"
         MONGOMS_DOWNLOAD_DIR        = "/var/jenkins_home/.cache/mongodb-binaries"
         MONGOMS_DISABLE_POSTINSTALL = "1"
-        DOCKER_BUILDKIT             = "1"
-        COMPOSE_FILE                = "${env.WORKSPACE}/docker-compose.yml"
         TRIVY_CACHE_DIR             = "/var/jenkins_home/.cache/trivy"
     }
 
     stages {
 
+        // ══════════════════════════════════════════════════════════════
+        // CHECKOUT
+        // ══════════════════════════════════════════════════════════════
         stage('Checkout') {
             steps {
                 echo '=== Recuperation depuis GitHub ==='
@@ -29,6 +55,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // VERSIONING
+        // ══════════════════════════════════════════════════════════════
         stage('Init Versioning') {
             steps {
                 script {
@@ -47,6 +76,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // INSTALL
+        // ══════════════════════════════════════════════════════════════
         stage('Install') {
             failFast true
             parallel {
@@ -59,6 +91,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // PREPARE MONGODB BINARY
+        // ══════════════════════════════════════════════════════════════
         stage('Prepare MongoDB Binary') {
             steps {
                 sh '''
@@ -75,27 +110,30 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // TESTS
+        // ══════════════════════════════════════════════════════════════
         stage('Tests') {
             failFast true
             parallel {
                 stage('Test auth') {
-                    steps { dir('backend/auth-service') { sh 'npm test' } }
+                    steps { dir('backend/auth-service')         { sh 'npm test' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
                 }
                 stage('Test user') {
-                    steps { dir('backend/user-service') { sh 'npm test' } }
+                    steps { dir('backend/user-service')         { sh 'npm test' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
                 }
                 stage('Test task') {
-                    steps { dir('backend/task-service') { sh 'npm test' } }
+                    steps { dir('backend/task-service')         { sh 'npm test' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
                 }
                 stage('Test project') {
-                    steps { dir('backend/project-service') { sh 'npm test' } }
+                    steps { dir('backend/project-service')      { sh 'npm test' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
                 }
                 stage('Test conge') {
-                    steps { dir('backend/conge-service') { sh 'npm test' } }
+                    steps { dir('backend/conge-service')        { sh 'npm test' } }
                     post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
                 }
                 stage('Test notif') {
@@ -105,14 +143,17 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // COVERAGE
+        // ══════════════════════════════════════════════════════════════
         stage('Verify Coverage') {
             steps {
                 sh '''
                     echo "=== TOUS les lcov.info dans le workspace ==="
-                    find /var/jenkins_home/workspace/task-management-system -name "lcov.info" 2>/dev/null | grep -v node_modules
+                    find ${WORKSPACE} -name "lcov.info" 2>/dev/null | grep -v node_modules
 
                     echo "=== TOUS les dossiers coverage ==="
-                    find /var/jenkins_home/workspace/task-management-system -type d -name "coverage" 2>/dev/null | grep -v node_modules
+                    find ${WORKSPACE} -type d -name "coverage" 2>/dev/null | grep -v node_modules
                 '''
             }
         }
@@ -139,6 +180,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // SONARQUBE
+        // ══════════════════════════════════════════════════════════════
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
@@ -165,6 +209,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // DOCKER
+        // ══════════════════════════════════════════════════════════════
         stage('Docker Login') {
             when { expression { !params.SKIP_DOCKER } }
             steps {
@@ -242,6 +289,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // SECURITY SCAN
+        // ══════════════════════════════════════════════════════════════
         stage('Download Trivy DB') {
             when { expression { !params.SKIP_DOCKER } }
             steps {
@@ -298,6 +348,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // DEPLOY
+        // ══════════════════════════════════════════════════════════════
         stage('Deploy') {
             when { expression { !params.ROLLBACK } }
             steps {
@@ -307,71 +360,89 @@ pipeline {
                     }
                 }
                 withCredentials([
-                    string(credentialsId: 'jwt-secret',        variable: 'JWT_SECRET'),
-                    string(credentialsId: 'mongo-uri-auth',    variable: 'MONGO_URI_AUTH'),
-                    string(credentialsId: 'mongo-uri-user',    variable: 'MONGO_URI_USER'),
-                    string(credentialsId: 'mongo-uri-task',    variable: 'MONGO_URI_TASK'),
-                    string(credentialsId: 'mongo-uri-project', variable: 'MONGO_URI_PROJECT'),
-                    string(credentialsId: 'mongo-uri-conge',   variable: 'MONGO_URI_CONGE'),
-                    string(credentialsId: 'mongo-uri-notif',   variable: 'MONGO_URI_NOTIF'),
+                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
                 ]) {
-                    sh """
-                        IMAGE_TAG=${env.IMAGE_TAG} \
-                        JWT_SECRET=\$JWT_SECRET \
-                        MONGO_URI_AUTH=\$MONGO_URI_AUTH \
-                        MONGO_URI_USER=\$MONGO_URI_USER \
-                        MONGO_URI_TASK=\$MONGO_URI_TASK \
-                        MONGO_URI_PROJECT=\$MONGO_URI_PROJECT \
-                        MONGO_URI_CONGE=\$MONGO_URI_CONGE \
-                        MONGO_URI_NOTIF=\$MONGO_URI_NOTIF \
-                        AUTH_SERVICE_URL=http://auth-service:5001 \
-                        USER_SERVICE_URL=http://user-service:5002 \
-                        TASK_SERVICE_URL=http://task-service:5003 \
-                        PROJECT_SERVICE_URL=http://project-service:5004 \
-                        CONGE_SERVICE_URL=http://conge-service:5005 \
-                        NOTIF_SERVICE_URL=http://notification-service:5006 \
-                        REACT_APP_API_URL=http://localhost:5000 \
-                        docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
-                    """
+                    script {
+                        if (params.DEPLOY_TARGET == 'local') {
+                            // ── MODE LOCAL : docker-compose ──
+                            sh """
+                                IMAGE_TAG=${env.IMAGE_TAG} \
+                                JWT_SECRET=\$JWT_SECRET \
+                                MONGO_URI_AUTH=${MONGO_URI_AUTH} \
+                                MONGO_URI_USER=${MONGO_URI_USER} \
+                                MONGO_URI_TASK=${MONGO_URI_TASK} \
+                                MONGO_URI_PROJECT=${MONGO_URI_PROJECT} \
+                                MONGO_URI_CONGE=${MONGO_URI_CONGE} \
+                                MONGO_URI_NOTIF=${MONGO_URI_NOTIF} \
+                                AUTH_SERVICE_URL=${AUTH_SERVICE_URL} \
+                                USER_SERVICE_URL=${USER_SERVICE_URL} \
+                                TASK_SERVICE_URL=${TASK_SERVICE_URL} \
+                                PROJECT_SERVICE_URL=${PROJECT_SERVICE_URL} \
+                                CONGE_SERVICE_URL=${CONGE_SERVICE_URL} \
+                                NOTIF_SERVICE_URL=${NOTIF_SERVICE_URL} \
+                                REACT_APP_API_URL=${REACT_APP_API_URL} \
+                                docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
+                            """
+                        } else {
+                            // ── MODE CLOUD : Kubernetes / Helm ──
+                            withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                                sh """
+                                    helm upgrade --install rfc-connect ./helm/rfc-connect \
+                                        --namespace ${params.ENV} \
+                                        --create-namespace \
+                                        --set image.tag=${env.IMAGE_TAG} \
+                                        --set image.registry=${REGISTRY} \
+                                        --set secrets.jwtSecret=\$JWT_SECRET \
+                                        --set mongo.uriAuth=${MONGO_URI_AUTH} \
+                                        --set mongo.uriUser=${MONGO_URI_USER} \
+                                        --set mongo.uriTask=${MONGO_URI_TASK} \
+                                        --set mongo.uriProject=${MONGO_URI_PROJECT} \
+                                        --set mongo.uriConge=${MONGO_URI_CONGE} \
+                                        --set mongo.uriNotif=${MONGO_URI_NOTIF} \
+                                        --wait --timeout 5m
+                                """
+                            }
+                        }
+                    }
                 }
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // ROLLBACK
+        // ══════════════════════════════════════════════════════════════
         stage('Rollback') {
             when { expression { params.ROLLBACK } }
             steps {
                 echo "Rolling back vers : ${env.PREV_TAG}"
                 withCredentials([
-                    string(credentialsId: 'jwt-secret',        variable: 'JWT_SECRET'),
-                    string(credentialsId: 'mongo-uri-auth',    variable: 'MONGO_URI_AUTH'),
-                    string(credentialsId: 'mongo-uri-user',    variable: 'MONGO_URI_USER'),
-                    string(credentialsId: 'mongo-uri-task',    variable: 'MONGO_URI_TASK'),
-                    string(credentialsId: 'mongo-uri-project', variable: 'MONGO_URI_PROJECT'),
-                    string(credentialsId: 'mongo-uri-conge',   variable: 'MONGO_URI_CONGE'),
-                    string(credentialsId: 'mongo-uri-notif',   variable: 'MONGO_URI_NOTIF'),
+                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
                 ]) {
                     sh """
                         IMAGE_TAG=${env.PREV_TAG} \
                         JWT_SECRET=\$JWT_SECRET \
-                        MONGO_URI_AUTH=\$MONGO_URI_AUTH \
-                        MONGO_URI_USER=\$MONGO_URI_USER \
-                        MONGO_URI_TASK=\$MONGO_URI_TASK \
-                        MONGO_URI_PROJECT=\$MONGO_URI_PROJECT \
-                        MONGO_URI_CONGE=\$MONGO_URI_CONGE \
-                        MONGO_URI_NOTIF=\$MONGO_URI_NOTIF \
-                        AUTH_SERVICE_URL=http://auth-service:5001 \
-                        USER_SERVICE_URL=http://user-service:5002 \
-                        TASK_SERVICE_URL=http://task-service:5003 \
-                        PROJECT_SERVICE_URL=http://project-service:5004 \
-                        CONGE_SERVICE_URL=http://conge-service:5005 \
-                        NOTIF_SERVICE_URL=http://notification-service:5006 \
-                        REACT_APP_API_URL=http://localhost:5000 \
+                        MONGO_URI_AUTH=${MONGO_URI_AUTH} \
+                        MONGO_URI_USER=${MONGO_URI_USER} \
+                        MONGO_URI_TASK=${MONGO_URI_TASK} \
+                        MONGO_URI_PROJECT=${MONGO_URI_PROJECT} \
+                        MONGO_URI_CONGE=${MONGO_URI_CONGE} \
+                        MONGO_URI_NOTIF=${MONGO_URI_NOTIF} \
+                        AUTH_SERVICE_URL=${AUTH_SERVICE_URL} \
+                        USER_SERVICE_URL=${USER_SERVICE_URL} \
+                        TASK_SERVICE_URL=${TASK_SERVICE_URL} \
+                        PROJECT_SERVICE_URL=${PROJECT_SERVICE_URL} \
+                        CONGE_SERVICE_URL=${CONGE_SERVICE_URL} \
+                        NOTIF_SERVICE_URL=${NOTIF_SERVICE_URL} \
+                        REACT_APP_API_URL=${REACT_APP_API_URL} \
                         docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
                     """
                 }
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // HEALTH CHECK
+        // ══════════════════════════════════════════════════════════════
         stage('Health Check') {
             when { expression { !params.ROLLBACK } }
             steps {
@@ -402,6 +473,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // CLEANUP
+        // ══════════════════════════════════════════════════════════════
         stage('Cleanup') {
             steps {
                 sh '''
