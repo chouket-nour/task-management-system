@@ -14,7 +14,7 @@ pipeline {
         REGISTRY         = "nourchouket2000"
         BACKEND_SERVICES = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
 
-        // ── MongoDB URIs (pas de mot de passe → pas dans Credentials) ──
+        // ── MongoDB URIs ──
         MONGO_URI_AUTH    = "mongodb://mongodb:27017/auth"
         MONGO_URI_USER    = "mongodb://mongodb:27017/user"
         MONGO_URI_TASK    = "mongodb://mongodb:27017/task"
@@ -22,7 +22,7 @@ pipeline {
         MONGO_URI_CONGE   = "mongodb://mongodb:27017/conge"
         MONGO_URI_NOTIF   = "mongodb://mongodb:27017/notif"
 
-        // ── URLs des services (pas secrètes → pas dans Credentials) ──
+        // ── URLs des services ──
         AUTH_SERVICE_URL    = "http://auth-service:5001"
         USER_SERVICE_URL    = "http://user-service:5002"
         TASK_SERVICE_URL    = "http://task-service:5003"
@@ -43,6 +43,28 @@ pipeline {
     }
 
     stages {
+
+        // ══════════════════════════════════════════════════════════════
+        // VALIDATE CREDENTIALS (avant tout autre stage)
+        // ══════════════════════════════════════════════════════════════
+        stage('Validate Credentials') {
+            steps {
+                script {
+                    // Vérifie que jwt-secret est accessible dès le début
+                    withCredentials([string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')]) {
+                        echo "Credential jwt-secret OK"
+                    }
+                    if (!params.SKIP_DOCKER) {
+                        withCredentials([
+                            string(credentialsId: 'docker-username', variable: 'DOCKER_USER'),
+                            string(credentialsId: 'docker-password', variable: 'DOCKER_PASS')
+                        ]) {
+                            echo "Credentials Docker OK"
+                        }
+                    }
+                }
+            }
+        }
 
         // ══════════════════════════════════════════════════════════════
         // CHECKOUT
@@ -358,11 +380,10 @@ pipeline {
                     if (params.ENV == 'prod') {
                         input message: "Confirmer le déploiement en PRODUCTION ?", ok: "Deploy"
                     }
-                }
-                withCredentials([
-                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
-                ]) {
-                    script {
+                    // Lecture de jwt-secret stockée dans COMPOSE_FILE encore présent
+                    withCredentials([
+                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
+                    ]) {
                         if (params.DEPLOY_TARGET == 'local') {
                             // ── MODE LOCAL : docker-compose ──
                             sh """
@@ -416,7 +437,7 @@ pipeline {
             steps {
                 echo "Rolling back vers : ${env.PREV_TAG}"
                 withCredentials([
-                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
+                    string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
                 ]) {
                     sh """
                         IMAGE_TAG=${env.PREV_TAG} \
@@ -486,15 +507,20 @@ pipeline {
         }
     }
 
+    // ══════════════════════════════════════════════════════════════════
+    // POST — IMPORTANT : cleanWs() EN DERNIER, après les logs
+    // ══════════════════════════════════════════════════════════════════
     post {
-        failure {
-            echo "ECHEC -- build #${env.BUILD_NUMBER}"
-            sh "docker-compose -f ${COMPOSE_FILE} logs --tail=50 || true"
-        }
         success {
             echo "RFC Connect déployé -- build #${env.BUILD_NUMBER} -- version ${env.IMAGE_TAG}"
         }
+        failure {
+            echo "ECHEC -- build #${env.BUILD_NUMBER}"
+            // COMPOSE_FILE est encore accessible ici car cleanWs() n'est pas encore appelé
+            sh "docker-compose -f ${env.WORKSPACE}/docker-compose.yml logs --tail=50 || true"
+        }
         always {
+            // cleanWs() EN DERNIER : après failure/success, pas avant
             echo "Pipeline terminé -- build #${env.BUILD_NUMBER}"
             cleanWs()
         }
