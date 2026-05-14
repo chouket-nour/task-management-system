@@ -93,3 +93,51 @@ variable "admin_ip" {
   description = "IP publique admin autorisée à SSH sur le jumpbox "
   type        = string
 }
+# ── AKS ───────────────────────────────────────────────────────────────────────
+
+variable "master_vm_size" {
+  description = "Taille VM master Kubernetes"
+  type        = string
+  default     = "Standard_D2_v2"
+}
+
+variable "agent_vm_size" {
+  description = "Taille VM agent Kubernetes"
+  type        = string
+  default     = "Standard_D2_v2"
+}
+
+variable "master_count" {
+  description = "Nombre de masters Kubernetes"
+  type        = number
+  default     = 1
+}
+
+variable "agent_count" {
+  description = "Nombre d'agents Kubernetes"
+  type        = number
+  default     = 2
+}
+
+variable "subnet_aks_cidr" {
+  description = "CIDR du subnet AKS"
+  type        = string
+  default     = "10.0.1.0/24"
+}
+
+variable "resource_group_id" {
+  description = "ID du resource group"
+  type        = string
+}
+
+variable "sp_client_id" {
+  description = "Client ID du Service Principal pour AKS"
+  type        = string
+  sensitive   = true
+}
+
+variable "sp_client_secret" {
+  description = "Client Secret du Service Principal pour AKS"
+  type        = string
+  sensitive   = true
+}
