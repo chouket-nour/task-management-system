@@ -130,14 +130,4 @@ variable "resource_group_id" {
   type        = string
 }
 
-variable "sp_client_id" {
-  description = "Client ID du Service Principal pour AKS"
-  type        = string
-  sensitive   = true
-}
 
-variable "sp_client_secret" {
-  description = "Client Secret du Service Principal pour AKS"
-  type        = string
-  sensitive   = true
-}
