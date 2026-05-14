@@ -1,14 +1,13 @@
----
-# ══════════════════════════════════════════════════════════════
-# 1. MISE A JOUR SYSTEME
-# ══════════════════════════════════════════════════════════════
-- name: Mettre à jour les paquets
+# ═══════════════════════════════════════
+# 1. SYSTEM UPDATE
+# ═══════════════════════════════════════
+- name: Update system packages
   apt:
-    update_cache: true
+    update_cache: yes
     upgrade: dist
     cache_valid_time: 3600
 
-- name: Installer les utilitaires de base
+- name: Install base tools
   apt:
     name:
       - curl
@@ -21,118 +20,135 @@
       - git
     state: present
 
-- name: Vérifier si un redémarrage est nécessaire
+- name: Check if reboot required
   stat:
     path: /var/run/reboot-required
   register: reboot_required
 
-- name: Redémarrer si nécessaire
+- name: Reboot if required
   reboot:
-    msg: "Redémarrage requis après mise à jour"
+    msg: "Reboot required after system update"
     reboot_timeout: 300
   when: reboot_required.stat.exists
 
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════
 # 2. JAVA
-# ══════════════════════════════════════════════════════════════
-- name: Installer Java 21
+# ═══════════════════════════════════════
+- name: Install Java 21
   apt:
     name: openjdk-21-jdk
     state: present
 
-- name: Définir Java 21 comme version par défaut
+- name: Set Java 21 default
   alternatives:
     name: java
     path: /usr/lib/jvm/java-21-openjdk-amd64/bin/java
 
-- name: Vérifier Java
+- name: Verify Java
   command: java -version
   register: java_version
   changed_when: false
 
-- name: Afficher version Java
+- name: Show Java version
   debug:
-    msg: "Java installé : {{ java_version.stderr }}"
+    msg: "Java installed: {{ java_version.stderr }}"
 
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════
 # 3. JENKINS
-# ══════════════════════════════════════════════════════════════
-- name: Importer la clé Jenkins
+# ═══════════════════════════════════════
+- name: Download Jenkins key
+  get_url:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    dest: /tmp/jenkins.key
+    mode: '0644'
+
+- name: Convert Jenkins key to gpg
   shell: |
-    gpg --keyserver keyserver.ubuntu.com --recv-keys 7198F4B714ABFC68
-    gpg --export 7198F4B714ABFC68 > /usr/share/keyrings/jenkins-keyring.gpg
+    gpg --dearmor -o /usr/share/keyrings/jenkins-keyring.gpg /tmp/jenkins.key
   args:
     creates: /usr/share/keyrings/jenkins-keyring.gpg
 
-- name: Ajouter le repo Jenkins
-  copy:
-    content: "deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg] https://pkg.jenkins.io/debian-stable binary/\n"
-    dest: /etc/apt/sources.list.d/jenkins.list
-    mode: '0644'
+- name: Add Jenkins repository
+  apt_repository:
+    repo: >
+      deb [signed-by=/usr/share/keyrings/jenkins-keyring.gpg]
+      https://pkg.jenkins.io/debian-stable binary/
+    state: present
+    filename: jenkins
 
-- name: Installer Jenkins
+- name: Install Jenkins
   apt:
     name: jenkins
     state: present
-    update_cache: true
+    update_cache: yes
 
-- name: Démarrer et activer Jenkins
+- name: Enable and start Jenkins
   systemd:
     name: jenkins
-    state: started
     enabled: true
+    state: started
 
-- name: Attendre que Jenkins soit prêt (port 8080)
+- name: Wait for Jenkins to be ready
   wait_for:
     port: 8080
     delay: 10
     timeout: 120
 
-# ══════════════════════════════════════════════════════════════
+# ═══════════════════════════════════════
 # 4. DOCKER
-# ══════════════════════════════════════════════════════════════
-- name: Télécharger la clé Docker
+# ═══════════════════════════════════════
+- name: Download Docker key
   get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
     dest: /tmp/docker.key
     mode: '0644'
 
-- name: Convertir et installer la clé Docker
-  shell: gpg --dearmor < /tmp/docker.key > /usr/share/keyrings/docker-keyring.gpg
+- name: Convert Docker key to gpg
+  shell: |
+    gpg --dearmor -o /usr/share/keyrings/docker.gpg /tmp/docker.key
   args:
-    creates: /usr/share/keyrings/docker-keyring.gpg
+    creates: /usr/share/keyrings/docker.gpg
 
-- name: Ajouter le repo Docker
-  copy:
-    content: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-keyring.gpg] https://download.docker.com/linux/ubuntu jammy stable\n"
-    dest: /etc/apt/sources.list.d/docker.list
-    mode: '0644'
-
-- name: Installer Docker
-  apt:
-    name: docker-ce
+- name: Add Docker repository
+  apt_repository:
+    repo: >
+      deb [arch=amd64 signed-by=/usr/share/keyrings/docker.gpg]
+      https://download.docker.com/linux/ubuntu
+      {{ ansible_distribution_release }} stable
     state: present
-    update_cache: true
+    filename: docker
 
-- name: Démarrer et activer Docker
+- name: Install Docker
+  apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: yes
+
+- name: Enable and start Docker
   systemd:
     name: docker
-    state: started
     enabled: true
+    state: started
 
-- name: Vérifier Docker
+- name: Verify Docker
   command: docker --version
   register: docker_version
   changed_when: false
 
-- name: Afficher version Docker
+- name: Show Docker version
   debug:
-    msg: "Docker installé : {{ docker_version.stdout }}"
+    msg: "Docker installed: {{ docker_version.stdout }}"
 
-# ══════════════════════════════════════════════════════════════
-# 5. DOCKER COMPOSE (manquait dans ton playbook original)
-# ══════════════════════════════════════════════════════════════
-- name: Obtenir la dernière version de docker-compose
+# ═══════════════════════════════════════
+# 5. DOCKER COMPOSE STANDALONE
+#    (nécessaire pour "docker-compose" dans le Jenkinsfile)
+# ═══════════════════════════════════════
+- name: Get latest docker-compose version
   uri:
     url: https://api.github.com/repos/docker/compose/releases/latest
     return_content: true
@@ -140,11 +156,7 @@
       Accept: application/vnd.github.v3+json
   register: compose_release
 
-- name: Afficher la version docker-compose qui sera installée
-  debug:
-    msg: "Version docker-compose : {{ compose_release.json.tag_name }}"
-
-- name: Installer docker-compose
+- name: Install docker-compose standalone
   get_url:
     url: "https://github.com/docker/compose/releases/download/{{ compose_release.json.tag_name }}/docker-compose-linux-x86_64"
     dest: /usr/local/bin/docker-compose
@@ -152,218 +164,297 @@
     owner: root
     group: root
 
-- name: Vérifier docker-compose
+- name: Verify docker-compose
   command: docker-compose --version
   register: compose_version
   changed_when: false
 
-- name: Afficher version docker-compose
+- name: Show docker-compose version
   debug:
-    msg: "docker-compose installé : {{ compose_version.stdout }}"
+    msg: "docker-compose installed: {{ compose_version.stdout }}"
 
-# ══════════════════════════════════════════════════════════════
-# 6. AJOUTER JENKINS AU GROUPE DOCKER
-# ══════════════════════════════════════════════════════════════
-- name: Ajouter jenkins au groupe docker
+# ═══════════════════════════════════════
+# 6. DOCKER ACCESS FOR JENKINS
+# ═══════════════════════════════════════
+- name: Add jenkins to docker group
   user:
     name: jenkins
     groups: docker
-    append: true
+    append: yes
 
-- name: Redémarrer Jenkins pour appliquer le groupe docker
-  systemd:
-    name: jenkins
-    state: restarted
-
-- name: Attendre que Jenkins redémarre
-  wait_for:
-    port: 8080
-    delay: 15
-    timeout: 120
-
-- name: Vérifier que jenkins peut utiliser Docker
-  command: docker ps
-  become: true
-  become_user: jenkins
-  environment:
-    HOME: /var/lib/jenkins
-  register: docker_check
-  changed_when: false
-  failed_when: false
-
-- name: Résultat accès Docker pour jenkins
-  debug:
-    msg: "{{ docker_check.stdout | default(docker_check.stderr) }}"
-
-# ══════════════════════════════════════════════════════════════
-# 7. DOSSIERS DE CACHE JENKINS 
-# ══════════════════════════════════════════════════════════════
-- name: Créer les dossiers de cache npm
+# ═══════════════════════════════════════
+# 7. CACHE SETUP
+# ═══════════════════════════════════════
+- name: Ensure Jenkins home exists
   file:
-    path: /var/lib/jenkins/.npm-cache
+    path: "{{ jenkins_home }}"
     state: directory
     owner: jenkins
     group: jenkins
     mode: '0755'
 
-- name: Créer le dossier de cache mongodb-binaries
+- name: Create Jenkins cache directories
   file:
-    path: /var/lib/jenkins/.cache/mongodb-binaries
+    path: "{{ jenkins_home }}/.cache/{{ item }}"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+  loop:
+    - npm
+    - mongodb-binaries
+    - trivy
+
+# IMPORTANT : crée aussi .npm-cache à la racine
+# car le Jenkinsfile utilise JENKINS_CACHE_ROOT/.npm-cache
+- name: Create npm-cache root directory
+  file:
+    path: "{{ jenkins_home }}/.npm-cache"
     state: directory
     owner: jenkins
     group: jenkins
     mode: '0755'
 
-- name: Créer le dossier de cache trivy
-  file:
-    path: /var/lib/jenkins/.cache/trivy
-    state: directory
-    owner: jenkins
-    group: jenkins
-    mode: '0755'
-
-- name: Vérifier les dossiers de cache créés
-  command: ls -la /var/lib/jenkins/.cache/
-  register: cache_dirs
-  changed_when: false
-
-- name: Afficher les dossiers de cache
-  debug:
-    msg: "{{ cache_dirs.stdout_lines }}"
-
-- name: Configurer le cache npm pour jenkins
+- name: Configure npm cache via .npmrc
   copy:
     content: |
-      cache=/var/lib/jenkins/.npm-cache
-    dest: /var/lib/jenkins/.npmrc
+      cache={{ jenkins_home }}/.npm-cache
+    dest: "{{ jenkins_home }}/.npmrc"
     owner: jenkins
     group: jenkins
     mode: '0644'
 
-- name: Corriger HOME de jenkins dans le service systemd
+# ═══════════════════════════════════════
+# 8. SYSTEMD OVERRIDE (HOME + NPM CACHE)
+# ═══════════════════════════════════════
+- name: Create Jenkins systemd override directory
   file:
     path: /etc/systemd/system/jenkins.service.d
     state: directory
+    owner: root
+    group: root
     mode: '0755'
 
-- name: Override HOME jenkins
+- name: Configure Jenkins HOME and NPM cache override
   copy:
     content: |
       [Service]
-      Environment="HOME=/var/lib/jenkins"
+      Environment="HOME={{ jenkins_home }}"
+      Environment="NPM_CONFIG_CACHE={{ jenkins_home }}/.npm-cache"
     dest: /etc/systemd/system/jenkins.service.d/override.conf
+    owner: root
+    group: root
     mode: '0644'
 
-- name: Recharger systemd
+- name: Reload systemd daemon
   systemd:
-    daemon_reload: true
+    daemon_reload: yes
 
-- name: Redémarrer Jenkins
-  systemd:
-    name: jenkins
-    state: restarted
-
-# ══════════════════════════════════════════════════════════════
-# 8. TRIVY 
-# ══════════════════════════════════════════════════════════════
-- name: Télécharger la clé Trivy
+# ═══════════════════════════════════════
+# 9. TRIVY
+# ═══════════════════════════════════════
+- name: Download Trivy key
   get_url:
     url: https://aquasecurity.github.io/trivy-repo/deb/public.key
     dest: /tmp/trivy.key
     mode: '0644'
 
-- name: Installer la clé Trivy
-  shell: gpg --dearmor < /tmp/trivy.key > /usr/share/keyrings/trivy-keyring.gpg
+- name: Convert Trivy key to gpg
+  shell: |
+    gpg --dearmor -o /usr/share/keyrings/trivy.gpg /tmp/trivy.key
   args:
-    creates: /usr/share/keyrings/trivy-keyring.gpg
+    creates: /usr/share/keyrings/trivy.gpg
 
-- name: Ajouter le repo Trivy
-  copy:
-    content: "deb [signed-by=/usr/share/keyrings/trivy-keyring.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main\n"
-    dest: /etc/apt/sources.list.d/trivy.list
-    mode: '0644'
+- name: Add Trivy repository
+  apt_repository:
+    repo: >
+      deb [signed-by=/usr/share/keyrings/trivy.gpg]
+      https://aquasecurity.github.io/trivy-repo/deb generic main
+    state: present
+    filename: trivy
 
-- name: Installer Trivy
+- name: Install Trivy
   apt:
     name: trivy
     state: present
-    update_cache: true
+    update_cache: yes
 
-- name: Vérifier Trivy
+- name: Verify Trivy
   command: trivy --version
   register: trivy_version
   changed_when: false
 
-- name: Afficher version Trivy
+- name: Show Trivy version
   debug:
-    msg: "Trivy installé : {{ trivy_version.stdout }}"
+    msg: "Trivy installed: {{ trivy_version.stdout }}"
 
-# ══════════════════════════════════════════════════════════════
-# 9. KUBECTL
-# ══════════════════════════════════════════════════════════════
-- name: Télécharger kubectl
+# ═══════════════════════════════════════
+# 10. SONARQUBE SCANNER
+# ═══════════════════════════════════════
+- name: Create SonarScanner directory
+  file:
+    path: /opt/sonar-scanner
+    state: directory
+    mode: '0755'
+
+- name: Download SonarScanner
   get_url:
-    url: https://dl.k8s.io/release/v1.29.0/bin/linux/amd64/kubectl
+    url: "https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-6.0.0.4432-linux.zip"
+    dest: /tmp/sonar-scanner.zip
+    mode: '0644'
+
+- name: Extract SonarScanner
+  unarchive:
+    src: /tmp/sonar-scanner.zip
+    dest: /opt/
+    remote_src: yes
+    creates: /opt/sonar-scanner-6.0.0.4432-linux
+
+- name: Create SonarScanner symlink
+  file:
+    src: /opt/sonar-scanner-6.0.0.4432-linux
+    dest: /opt/sonar-scanner
+    state: link
+    force: yes
+
+- name: Make SonarScanner executable
+  file:
+    path: /opt/sonar-scanner-6.0.0.4432-linux/bin/sonar-scanner
+    mode: '0755'
+
+- name: Create Jenkins .sonar cache directory
+  file:
+    path: "{{ jenkins_home }}/.sonar"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Show SonarScanner info
+  debug:
+    msg:
+      - "SonarScanner installé dans : /opt/sonar-scanner"
+      - "IMPORTANT : Configurer dans Jenkins UI :"
+      - "  Manage Jenkins > Tools > SonarScanner"
+      - "    Name : SonarScanner"
+      - "    Path : /opt/sonar-scanner"
+      - "  Manage Jenkins > System > SonarQube servers"
+      - "    Name : SonarQube"
+      - "    URL  : http://IP_SONAR:9000"
+
+# ═══════════════════════════════════════
+# 11. KUBECTL
+# ═══════════════════════════════════════
+- name: Set default kubectl version
+  set_fact:
+    kubectl_version: "{{ kubectl_version | default('v1.30.1') }}"
+
+- name: Install kubectl
+  get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
     dest: /usr/local/bin/kubectl
     mode: '0755'
 
-- name: Vérifier kubectl
+- name: Verify kubectl
   command: kubectl version --client
-  register: kubectl_version
+  register: kubectl_version_out
   changed_when: false
 
-- name: Afficher version kubectl
+- name: Show kubectl version
   debug:
-    msg: "kubectl installé : {{ kubectl_version.stdout }}"
+    msg: "kubectl installed: {{ kubectl_version_out.stdout }}"
 
-# ══════════════════════════════════════════════════════════════
-# 10. HELM
-# ══════════════════════════════════════════════════════════════
-- name: Télécharger le script Helm
+# ═══════════════════════════════════════
+# 12. HELM
+# ═══════════════════════════════════════
+- name: Download Helm archive
   get_url:
-    url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-    dest: /tmp/get-helm.sh
+    url: https://get.helm.sh/helm-v3.15.1-linux-amd64.tar.gz
+    dest: /tmp/helm.tar.gz
+    mode: '0644'
+
+- name: Extract Helm archive
+  unarchive:
+    src: /tmp/helm.tar.gz
+    dest: /tmp
+    remote_src: yes
+
+- name: Install Helm binary
+  copy:
+    src: /tmp/linux-amd64/helm
+    dest: /usr/local/bin/helm
     mode: '0755'
+    remote_src: yes
 
-- name: Installer Helm
-  command: /tmp/get-helm.sh
-  args:
-    creates: /usr/local/bin/helm
-
-- name: Vérifier Helm
+- name: Verify Helm
   command: helm version
   register: helm_version
   changed_when: false
 
-- name: Afficher version Helm
+- name: Show Helm version
   debug:
-    msg: "Helm installé : {{ helm_version.stdout }}"
+    msg: "Helm installed: {{ helm_version.stdout }}"
 
-# ══════════════════════════════════════════════════════════════
-# 11. VERIFICATION FINALE
-# ══════════════════════════════════════════════════════════════
-- name: Récupérer le mot de passe initial Jenkins
-  command: cat /var/lib/jenkins/secrets/initialAdminPassword
+# ═══════════════════════════════════════
+# 13. FINAL RESTART JENKINS
+# ═══════════════════════════════════════
+- name: Restart Jenkins to apply all configs
+  systemd:
+    name: jenkins
+    state: restarted
+
+- name: Wait for Jenkins to be ready after restart
+  wait_for:
+    port: 8080
+    delay: 15
+    timeout: 120
+
+- name: Verify Jenkins can use Docker
+  command: docker ps
+  become: true
+  become_user: jenkins
+  environment:
+    HOME: "{{ jenkins_home }}"
+  register: docker_check
+  changed_when: false
+  failed_when: false
+
+- name: Show Docker access result for jenkins
+  debug:
+    msg: "{{ docker_check.stdout | default(docker_check.stderr) }}"
+
+# ═══════════════════════════════════════
+# 14. GET JENKINS PASSWORD
+# ═══════════════════════════════════════
+- name: Get Jenkins initial admin password
+  command: cat {{ jenkins_home }}/secrets/initialAdminPassword
   register: jenkins_password
   changed_when: false
   failed_when: false
 
-- name: Résumé de l'installation
+# ═══════════════════════════════════════
+# 15. FINAL SUMMARY
+# ═══════════════════════════════════════
+- name: Installation summary
   debug:
     msg:
-      - "============================================"
-      - "      INSTALLATION TERMINÉE"
-      - "============================================"
-      - "Java        : {{ java_version.stderr | regex_search('openjdk version.*') }}"
-      - "Docker      : {{ docker_version.stdout }}"
-      - "Compose     : {{ compose_version.stdout }}"
-      - "Trivy       : {{ trivy_version.stdout.split()[1] }}"
-      - "kubectl     : {{ kubectl_version.stdout }}"
-      - "Helm        : {{ helm_version.stdout }}"
-      - "Jenkins URL : http://{{ ansible_host }}:8080"
-      - "Mot de passe: {{ jenkins_password.stdout | default('déjà configuré') }}"
-      - "============================================"
-      - "CACHE NPM   : /var/lib/jenkins/.npm-cache"
-      - "CACHE MONGO : /var/lib/jenkins/.cache/mongodb-binaries"
-      - "CACHE TRIVY : /var/lib/jenkins/.cache/trivy"
-      - "============================================"
+      - "════════════════════════════════════════════"
+      - "         CI/CD SERVER READY"
+      - "════════════════════════════════════════════"
+      - "Java          : {{ java_version.stderr | regex_search('openjdk version.*') }}"
+      - "Docker        : {{ docker_version.stdout }}"
+      - "Compose       : {{ compose_version.stdout }}"
+      - "Trivy         : {{ trivy_version.stdout.split()[1] }}"
+      - "kubectl       : {{ kubectl_version }}"
+      - "Helm          : {{ helm_version.stdout }}"
+      - "SonarScanner  : /opt/sonar-scanner"
+      - "Jenkins URL   : http://{{ ansible_host }}:8080"
+      - "Mot de passe  : {{ jenkins_password.stdout | default('déjà configuré') }}"
+      - "════════════════════════════════════════════"
+      - "CACHE NPM     : {{ jenkins_home }}/.npm-cache"
+      - "CACHE MONGO   : {{ jenkins_home }}/.cache/mongodb-binaries"
+      - "CACHE TRIVY   : {{ jenkins_home }}/.cache/trivy"
+      - "CACHE SONAR   : {{ jenkins_home }}/.sonar"
+      - "════════════════════════════════════════════"
+
+   
