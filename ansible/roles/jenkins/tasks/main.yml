@@ -422,11 +422,7 @@
     timeout: 120
 
 - name: Verify Jenkins can use Docker
-  command: docker ps
-  become: true
-  become_user: jenkins
-  environment:
-    HOME: "{{ jenkins_home }}"
+  command: sudo -u jenkins docker ps
   register: docker_check
   changed_when: false
   failed_when: false
