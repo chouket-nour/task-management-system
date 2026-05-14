@@ -149,6 +149,17 @@ resource "azurestack_network_security_group" "tools" {
     source_address_prefix      = "*"
     destination_address_prefix = "Internet"
   }
+  security_rule {
+    name                       = "allow-sonarqube-from-jumpbox"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "9000"
+    source_address_prefix      = var.subnet_jumpbox_cidr
+    destination_address_prefix = "*"
+  }
 }
 
 # ══════════════════════════════════════════════════════════════════
