@@ -10,6 +10,8 @@ module.exports = {
     testEnvironment: "node",
     rootDir: path.resolve(__dirname, `backend/${service}`),
     roots: [`<rootDir>`],
+    testTimeout: 30000, // FIX : timeout augmenté pour MongoMemoryServer sur VM
+
     collectCoverageFrom: [
       `<rootDir>/**/*.js`,
       `!<rootDir>/node_modules/**`,
