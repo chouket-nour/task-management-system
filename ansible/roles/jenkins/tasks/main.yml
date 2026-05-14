@@ -196,7 +196,7 @@
     msg: "{{ docker_check.stdout | default(docker_check.stderr) }}"
 
 # ══════════════════════════════════════════════════════════════
-# 7. DOSSIERS DE CACHE JENKINS (manquait dans ton playbook original)
+# 7. DOSSIERS DE CACHE JENKINS 
 # ══════════════════════════════════════════════════════════════
 - name: Créer les dossiers de cache npm
   file:
@@ -231,8 +231,40 @@
   debug:
     msg: "{{ cache_dirs.stdout_lines }}"
 
+- name: Configurer le cache npm pour jenkins
+  copy:
+    content: |
+      cache=/var/lib/jenkins/.npm-cache
+    dest: /var/lib/jenkins/.npmrc
+    owner: jenkins
+    group: jenkins
+    mode: '0644'
+
+- name: Corriger HOME de jenkins dans le service systemd
+  file:
+    path: /etc/systemd/system/jenkins.service.d
+    state: directory
+    mode: '0755'
+
+- name: Override HOME jenkins
+  copy:
+    content: |
+      [Service]
+      Environment="HOME=/var/lib/jenkins"
+    dest: /etc/systemd/system/jenkins.service.d/override.conf
+    mode: '0644'
+
+- name: Recharger systemd
+  systemd:
+    daemon_reload: true
+
+- name: Redémarrer Jenkins
+  systemd:
+    name: jenkins
+    state: restarted
+
 # ══════════════════════════════════════════════════════════════
-# 8. TRIVY (manquait dans ton playbook original)
+# 8. TRIVY 
 # ══════════════════════════════════════════════════════════════
 - name: Télécharger la clé Trivy
   get_url:

@@ -35,14 +35,58 @@ pipeline {
         DOCKER_BUILDKIT  = "1"
         COMPOSE_FILE     = "${env.WORKSPACE}/docker-compose.yml"
 
-        // ── Cache ──
-        NPM_CONFIG_CACHE            = "/var/jenkins_home/.npm-cache"
-        MONGOMS_DOWNLOAD_DIR        = "/var/jenkins_home/.cache/mongodb-binaries"
+        // ── Désactiver postinstall MongoDB ──
         MONGOMS_DISABLE_POSTINSTALL = "1"
-        TRIVY_CACHE_DIR             = "/var/jenkins_home/.cache/trivy"
+
+        // ── Les chemins de cache seront définis dynamiquement
+        //    dans le stage 'Detect Environment' ──
     }
 
     stages {
+
+        // ══════════════════════════════════════════════════════════════
+        // DETECT ENVIRONMENT (local vs cloud)
+        // ══════════════════════════════════════════════════════════════
+        stage('Detect Environment') {
+            steps {
+                script {
+                    def jenkinsHome = sh(
+                        script: 'echo $HOME',
+                        returnStdout: true
+                    ).trim()
+
+                    if (jenkinsHome == '/var/lib/jenkins') {
+                        // ── VM Azure / Cloud ──
+                        env.JENKINS_CACHE_ROOT = '/var/lib/jenkins'
+                        env.DEPLOY_ENV         = 'cloud'
+                    } else {
+                        // ── Local (Docker Jenkins) ──
+                        env.JENKINS_CACHE_ROOT = '/var/jenkins_home'
+                        env.DEPLOY_ENV         = 'local-machine'
+                    }
+
+                    // Définir les chemins de cache dynamiquement
+                    env.NPM_CONFIG_CACHE     = "${env.JENKINS_CACHE_ROOT}/.npm-cache"
+                    env.MONGOMS_DOWNLOAD_DIR = "${env.JENKINS_CACHE_ROOT}/.cache/mongodb-binaries"
+                    env.TRIVY_CACHE_DIR      = "${env.JENKINS_CACHE_ROOT}/.cache/trivy"
+
+                    echo "════════════════════════════════════════════"
+                    echo " Environnement détecté : ${env.DEPLOY_ENV}"
+                    echo " HOME Jenkins          : ${jenkinsHome}"
+                    echo " Cache NPM             : ${env.NPM_CONFIG_CACHE}"
+                    echo " Cache MongoDB         : ${env.MONGOMS_DOWNLOAD_DIR}"
+                    echo " Cache Trivy           : ${env.TRIVY_CACHE_DIR}"
+                    echo "════════════════════════════════════════════"
+
+                    // Créer les dossiers de cache s'ils n'existent pas
+                    sh """
+                        mkdir -p ${env.NPM_CONFIG_CACHE}
+                        mkdir -p ${env.MONGOMS_DOWNLOAD_DIR}
+                        mkdir -p ${env.TRIVY_CACHE_DIR}
+                    """
+                }
+            }
+        }
 
         // ══════════════════════════════════════════════════════════════
         // VALIDATE CREDENTIALS (avant tout autre stage)
@@ -50,7 +94,6 @@ pipeline {
         stage('Validate Credentials') {
             steps {
                 script {
-                    // Vérifie que jwt-secret est accessible dès le début
                     withCredentials([string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')]) {
                         echo "Credential jwt-secret OK"
                     }
@@ -104,12 +147,72 @@ pipeline {
         stage('Install') {
             failFast true
             parallel {
-                stage('auth')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/auth-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('user')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/user-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('task')    { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/task-service')         { sh 'npm ci --prefer-offline' } } } } }
-                stage('project') { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/project-service')      { sh 'npm ci --prefer-offline' } } } } }
-                stage('conge')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/conge-service')        { sh 'npm ci --prefer-offline' } } } } }
-                stage('notif')   { steps { timeout(time: 10, unit: 'MINUTES') { retry(2) { dir('backend/notification-service') { sh 'npm ci --prefer-offline' } } } } }
+                stage('auth') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/auth-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('user') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/user-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('task') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/task-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('project') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/project-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('conge') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/conge-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
+                stage('notif') {
+                    steps {
+                        timeout(time: 10, unit: 'MINUTES') {
+                            retry(2) {
+                                dir('backend/notification-service') {
+                                    sh 'npm ci --prefer-offline'
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -118,17 +221,19 @@ pipeline {
         // ══════════════════════════════════════════════════════════════
         stage('Prepare MongoDB Binary') {
             steps {
-                sh '''
-                    mkdir -p /var/jenkins_home/.cache/mongodb-binaries
-                    cd backend/auth-service
-                    node -e "
-                      const { MongoMemoryServer } = require('mongodb-memory-server');
-                      MongoMemoryServer.create().then(s => {
-                        console.log('Binaire MongoDB pret');
-                        s.stop();
-                      });
-                    "
-                '''
+                script {
+                    sh """
+                        mkdir -p ${env.MONGOMS_DOWNLOAD_DIR}
+                        cd backend/auth-service
+                        node -e "
+                          const { MongoMemoryServer } = require('mongodb-memory-server');
+                          MongoMemoryServer.create().then(s => {
+                            console.log('Binaire MongoDB pret');
+                            s.stop();
+                          });
+                        "
+                    """
+                }
             }
         }
 
@@ -139,28 +244,64 @@ pipeline {
             failFast true
             parallel {
                 stage('Test auth') {
-                    steps { dir('backend/auth-service')         { sh 'npm test' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml' } }
+                    steps {
+                        dir('backend/auth-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/auth-service/junit.xml'
+                        }
+                    }
                 }
                 stage('Test user') {
-                    steps { dir('backend/user-service')         { sh 'npm test' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml' } }
+                    steps {
+                        dir('backend/user-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/user-service/junit.xml'
+                        }
+                    }
                 }
                 stage('Test task') {
-                    steps { dir('backend/task-service')         { sh 'npm test' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml' } }
+                    steps {
+                        dir('backend/task-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/task-service/junit.xml'
+                        }
+                    }
                 }
                 stage('Test project') {
-                    steps { dir('backend/project-service')      { sh 'npm test' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml' } }
+                    steps {
+                        dir('backend/project-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/project-service/junit.xml'
+                        }
+                    }
                 }
                 stage('Test conge') {
-                    steps { dir('backend/conge-service')        { sh 'npm test' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml' } }
+                    steps {
+                        dir('backend/conge-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/conge-service/junit.xml'
+                        }
+                    }
                 }
                 stage('Test notif') {
-                    steps { dir('backend/notification-service') { sh 'npm test' } }
-                    post  { always { junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml' } }
+                    steps {
+                        dir('backend/notification-service') { sh 'npm test' }
+                    }
+                    post {
+                        always {
+                            junit allowEmptyResults: true, testResults: 'backend/notification-service/junit.xml'
+                        }
+                    }
                 }
             }
         }
@@ -317,13 +458,15 @@ pipeline {
         stage('Download Trivy DB') {
             when { expression { !params.SKIP_DOCKER } }
             steps {
-                sh """
-                    mkdir -p ${TRIVY_CACHE_DIR}
-                    trivy image \
-                        --download-db-only \
-                        --cache-dir ${TRIVY_CACHE_DIR} \
-                        --timeout 20m
-                """
+                script {
+                    sh """
+                        mkdir -p ${env.TRIVY_CACHE_DIR}
+                        trivy image \
+                            --download-db-only \
+                            --cache-dir ${env.TRIVY_CACHE_DIR} \
+                            --timeout 20m
+                    """
+                }
             }
         }
 
@@ -348,7 +491,7 @@ pipeline {
                                     --skip-db-update \
                                     --format table \
                                     --ignorefile ${WORKSPACE}/.trivyignore \
-                                    --cache-dir ${TRIVY_CACHE_DIR} \
+                                    --cache-dir ${env.TRIVY_CACHE_DIR} \
                                     --timeout 10m \
                                     ${REGISTRY}/rfc-${svc}:${env.IMAGE_TAG}
                             """
@@ -380,7 +523,6 @@ pipeline {
                     if (params.ENV == 'prod') {
                         input message: "Confirmer le déploiement en PRODUCTION ?", ok: "Deploy"
                     }
-                    // Lecture de jwt-secret stockée dans COMPOSE_FILE encore présent
                     withCredentials([
                         string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
                     ]) {
@@ -508,7 +650,7 @@ pipeline {
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // POST — IMPORTANT : cleanWs() EN DERNIER, après les logs
+    // POST — cleanWs() EN DERNIER, après les logs
     // ══════════════════════════════════════════════════════════════════
     post {
         success {
@@ -516,11 +658,9 @@ pipeline {
         }
         failure {
             echo "ECHEC -- build #${env.BUILD_NUMBER}"
-            // COMPOSE_FILE est encore accessible ici car cleanWs() n'est pas encore appelé
             sh "docker-compose -f ${env.WORKSPACE}/docker-compose.yml logs --tail=50 || true"
         }
         always {
-            // cleanWs() EN DERNIER : après failure/success, pas avant
             echo "Pipeline terminé -- build #${env.BUILD_NUMBER}"
             cleanWs()
         }
