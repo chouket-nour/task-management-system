@@ -193,7 +193,11 @@
     name: jenkins
     groups: docker
     append: yes
-
+- name: Add nouradmin to docker group
+  user:
+    name: nouradmin
+    groups: docker
+    append: yes
 # ═══════════════════════════════════════
 # 7. CACHE SETUP
 # ═══════════════════════════════════════
