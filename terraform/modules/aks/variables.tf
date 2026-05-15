@@ -1,6 +1,6 @@
 variable "k8s_version" {
   type    = string
-  default = "1.20.0"
+  default = "1.31.13"
 }
 
 variable "master_count" {
