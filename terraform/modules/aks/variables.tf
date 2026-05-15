@@ -56,11 +56,11 @@ variable "ssh_public_key" {
   type = string
 }
 
-variable "service_principal_client_id" {
+variable "client_id" {
   type = string
 }
 
-variable "service_principal_client_secret" {
+variable "secret_value" {
   type      = string
   sensitive = true
 }

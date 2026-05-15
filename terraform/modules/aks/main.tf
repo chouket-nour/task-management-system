@@ -36,8 +36,8 @@ locals {
         }
       }
       servicePrincipalProfile = {
-        clientId = var.service_principal_client_id
-        secret   = var.service_principal_client_secret
+        clientId = var.client_id
+        secret   = var.secret_value
       }
     }
   }
@@ -62,8 +62,8 @@ resource "null_resource" "aks_deploy" {
         --location ${var.location} \
         --resource-group ${var.resource_group_name} \
         --subscription-id ${var.subscription_id} \
-        --client-id ${var.service_principal_client_id} \
-        --client-secret ${var.service_principal_client_secret} \
+        --client-id ${var.client_id} \
+        --client-secret ${var.secret_value} \
         --auth-method client_secret \
         --output-directory ${path.module}/_output
     EOT
