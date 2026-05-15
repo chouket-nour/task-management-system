@@ -34,6 +34,7 @@ variable "resource_group_name" {
 
 variable "location" {
   type = string
+  default = "dc2"
 }
 
 variable "project_name" {
