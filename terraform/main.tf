@@ -46,7 +46,7 @@ module "aks" {
   subscription_id                 = var.subscription_id
   tenant_id                       = var.tenant_id
   resource_group_id               = var.resource_group_id
-  service_principal_client_id     = var.client_id
-  service_principal_client_secret = var.secret_value
+  client_id     = var.client_id
+  secret_value = var.secret_value
 }
 
