@@ -87,7 +87,7 @@ variable "vnet_address_space" {
 variable "kubernetes_version" {
   description = "Version Kubernetes"
   type        = string
-  default     = "1.20.0"
+  default     = "1.31.13"
 }
 variable "admin_ip" {
   description = "IP publique admin autorisée à SSH sur le jumpbox "
