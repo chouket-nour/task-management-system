@@ -129,5 +129,15 @@ variable "resource_group_id" {
   description = "ID du resource group"
   type        = string
 }
+variable "portal_url" {
+  type = string
+}
 
+variable "active_directory_endpoint" {
+  type = string
+}
+
+variable "cloud_suffix" {
+  type = string
+}
 

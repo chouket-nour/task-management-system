@@ -77,3 +77,18 @@ variable "tenant_id" {
 variable "resource_group_id" {
   type = string
 }
+variable "portal_url" {
+  type = string
+}
+
+variable "resource_manager_endpoint" {
+  type = string
+}
+
+variable "active_directory_endpoint" {
+  type = string
+}
+
+variable "cloud_suffix" {
+  type = string
+}
