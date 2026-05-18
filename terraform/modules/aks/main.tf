@@ -41,12 +41,21 @@ locals {
       }
     }
   }
+
+  # Chemin absolu vers le répertoire de sortie
+  output_dir   = "${path.module}/_output"
+  apimodel_path = "${path.module}/apimodel.json"
 }
 
+# ── Génération du fichier apimodel.json ───────────────────────────────────────
+
 resource "local_file" "api_model" {
-  content  = jsonencode(local.api_model)
-  filename = "${path.module}/apimodel.json"
+  content         = jsonencode(local.api_model)
+  filename        = local.apimodel_path
+  file_permission = "0600" # sécurité : lecture owner uniquement
 }
+
+# ── Déploiement AKS Engine ────────────────────────────────────────────────────
 
 resource "null_resource" "aks_deploy" {
   depends_on = [local_file.api_model]
@@ -56,16 +65,31 @@ resource "null_resource" "aks_deploy" {
   }
 
   provisioner "local-exec" {
-    command = <<EOT
+    interpreter = ["/bin/bash", "-euo", "pipefail", "-c"]
+
+    # Variables isolées dans environment → pas d'injection shell, secrets protégés
+    environment = {
+      AKS_API_MODEL     = local.apimodel_path
+      AKS_LOCATION      = var.location
+      AKS_RG            = var.resource_group_name
+      AKS_SUB_ID        = var.subscription_id
+      AKS_CLIENT_ID     = var.client_id
+      AKS_CLIENT_SECRET = var.secret_value
+      AKS_OUTPUT_DIR    = local.output_dir
+    }
+
+    command = <<-EOT
+      mkdir -p "$AKS_OUTPUT_DIR"
+
       aks-engine-azurestack deploy \
-        --api-model ${path.module}/apimodel.json \
-        --location ${var.location} \
-        --resource-group ${var.resource_group_name} \
-        --subscription-id ${var.subscription_id} \
-        --client-id ${var.client_id} \
-        --client-secret ${var.secret_value} \
-        --auth-method client_secret \
-        --output-directory ${path.module}/_output
+        --api-model     "$AKS_API_MODEL"     \
+        --location      "$AKS_LOCATION"      \
+        --resource-group "$AKS_RG"           \
+        --subscription-id "$AKS_SUB_ID"      \
+        --client-id     "$AKS_CLIENT_ID"     \
+        --client-secret "$AKS_CLIENT_SECRET" \
+        --auth-method   client_secret        \
+        --output-directory "$AKS_OUTPUT_DIR"
     EOT
   }
 }
