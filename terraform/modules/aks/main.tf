@@ -89,6 +89,8 @@ resource "null_resource" "aks_deploy" {
         --client-id     "$AKS_CLIENT_ID"     \
         --client-secret "$AKS_CLIENT_SECRET" \
         --auth-method   client_secret        \
+        --azure-env      AzureStackCloud      \
+        --identity-system adfs                \
         --output-directory "$AKS_OUTPUT_DIR"
     EOT
   }
