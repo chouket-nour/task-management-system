@@ -19,7 +19,8 @@ locals {
         orchestratorType    = "Kubernetes"
         orchestratorVersion = var.k8s_version
         kubernetesConfig = {
-          networkPlugin = "azure"
+          networkPlugin               = "azure"
+          useCloudControllerManager  = true
         }
       }
       masterProfile = {
