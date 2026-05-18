@@ -2,6 +2,19 @@ locals {
   api_model = {
     apiVersion = "vlabs"
     properties = {
+      customCloudProfile = {
+        portalURL = var.portal_url
+        environment = {
+          name                    = "AzureStackCloud"
+          resourceManagerEndpoint = var.resource_manager_endpoint
+          activeDirectoryEndpoint = var.active_directory_endpoint
+          graphEndpoint           = "https://graph.windows.net/"
+          keyVaultEndpoint        = "https://vault.${var.cloud_suffix}/"
+          storageEndpointSuffix   = var.cloud_suffix
+          keyVaultDNSSuffix       = "vault.${var.cloud_suffix}"
+          identitySystem          = "adfs"
+        }
+      }
       orchestratorProfile = {
         orchestratorType    = "Kubernetes"
         orchestratorVersion = var.k8s_version
