@@ -42,7 +42,6 @@ locals {
     }
   }
 
-  output_dir    = abspath("${path.module}/_output")
   apimodel_path = abspath("${path.module}/apimodel.json")
 }
 
@@ -50,43 +49,4 @@ resource "local_file" "api_model" {
   content         = jsonencode(local.api_model)
   filename        = local.apimodel_path
   file_permission = "0600"
-}
-
-resource "null_resource" "aks_deploy" {
-  depends_on = [local_file.api_model]
-
-  triggers = {
-    api_model_hash = sha256(jsonencode(local.api_model))
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["/bin/bash", "-euo", "pipefail", "-c"]
-
-    environment = {
-      AKS_API_MODEL     = local.apimodel_path
-      AKS_LOCATION      = var.location
-      AKS_RG            = var.resource_group_name
-      AKS_SUB_ID        = var.subscription_id
-      AKS_CLIENT_ID     = var.client_id
-      AKS_CLIENT_SECRET = var.secret_value
-      AKS_OUTPUT_DIR    = local.output_dir
-    }
-
-    command = <<-EOT
-      mkdir -p "$AKS_OUTPUT_DIR"
-
-      aks-engine-azurestack deploy \
-        --api-model      "$AKS_API_MODEL"     \
-        --location       "$AKS_LOCATION"      \
-        --resource-group "$AKS_RG"            \
-        --subscription-id "$AKS_SUB_ID"       \
-        --client-id      "$AKS_CLIENT_ID"     \
-        --client-secret  "$AKS_CLIENT_SECRET" \
-        --auth-method    client_secret        \
-        --azure-env      AzureStackCloud      \
-        --identity-system adfs                \
-        --force-overwrite                     \
-        --output-directory "$AKS_OUTPUT_DIR"
-    EOT
-  }
 }
