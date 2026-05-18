@@ -27,7 +27,7 @@ locals {
         count                    = var.master_count
         dnsPrefix                = var.dns_prefix
         vmSize                   = var.master_vm_size
-        distro                   = "aks-ubuntu-18.04"
+        distro                   = "aks-ubuntu-20.04"
         vnetSubnetID             = var.subnet_aks_id
         firstConsecutiveStaticIP = "10.0.1.5"
       }
@@ -36,7 +36,7 @@ locals {
           name                = "agentpool"
           count               = var.agent_count
           vmSize              = var.agent_vm_size
-          distro              = "aks-ubuntu-18.04"
+          distro              = "aks-ubuntu-20.04"
           vnetSubnetID        = var.subnet_aks_id
           availabilityProfile = "AvailabilitySet"
         }
