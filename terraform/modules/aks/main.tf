@@ -42,20 +42,15 @@ locals {
     }
   }
 
-  # Chemin absolu vers le répertoire de sortie
-  output_dir   = "${path.module}/_output"
-  apimodel_path = "${path.module}/apimodel.json"
+  output_dir    = abspath("${path.module}/_output")
+  apimodel_path = abspath("${path.module}/apimodel.json")
 }
-
-# ── Génération du fichier apimodel.json ───────────────────────────────────────
 
 resource "local_file" "api_model" {
   content         = jsonencode(local.api_model)
   filename        = local.apimodel_path
-  file_permission = "0600" # sécurité : lecture owner uniquement
+  file_permission = "0600"
 }
-
-# ── Déploiement AKS Engine ────────────────────────────────────────────────────
 
 resource "null_resource" "aks_deploy" {
   depends_on = [local_file.api_model]
@@ -67,7 +62,6 @@ resource "null_resource" "aks_deploy" {
   provisioner "local-exec" {
     interpreter = ["/bin/bash", "-euo", "pipefail", "-c"]
 
-    # Variables isolées dans environment → pas d'injection shell, secrets protégés
     environment = {
       AKS_API_MODEL     = local.apimodel_path
       AKS_LOCATION      = var.location
@@ -82,15 +76,16 @@ resource "null_resource" "aks_deploy" {
       mkdir -p "$AKS_OUTPUT_DIR"
 
       aks-engine-azurestack deploy \
-        --api-model     "$AKS_API_MODEL"     \
-        --location      "$AKS_LOCATION"      \
-        --resource-group "$AKS_RG"           \
-        --subscription-id "$AKS_SUB_ID"      \
-        --client-id     "$AKS_CLIENT_ID"     \
-        --client-secret "$AKS_CLIENT_SECRET" \
-        --auth-method   client_secret        \
+        --api-model      "$AKS_API_MODEL"     \
+        --location       "$AKS_LOCATION"      \
+        --resource-group "$AKS_RG"            \
+        --subscription-id "$AKS_SUB_ID"       \
+        --client-id      "$AKS_CLIENT_ID"     \
+        --client-secret  "$AKS_CLIENT_SECRET" \
+        --auth-method    client_secret        \
         --azure-env      AzureStackCloud      \
         --identity-system adfs                \
+        --force-overwrite                     \
         --output-directory "$AKS_OUTPUT_DIR"
     EOT
   }
