@@ -1,12 +1,13 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-API_MODEL="$SCRIPT_DIR/../modules/aks/apimodel.json"
-OUTPUT_DIR="$SCRIPT_DIR/../modules/aks/_output"
+TERRAFORM_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+API_MODEL="$TERRAFORM_DIR/modules/aks/apimodel.json"
+OUTPUT_DIR="$TERRAFORM_DIR/modules/aks/_output"
 
-echo "API_MODEL : $API_MODEL"
-echo "OUTPUT_DIR: $OUTPUT_DIR"
+echo "TERRAFORM_DIR : $TERRAFORM_DIR"
+echo "API_MODEL     : $API_MODEL"
+echo "OUTPUT_DIR    : $OUTPUT_DIR"
 
 mkdir -p "$OUTPUT_DIR"
 
