@@ -3,7 +3,8 @@ locals {
     apiVersion = "vlabs"
     properties = {
       customCloudProfile = {
-        portalURL = var.portal_url
+        portalURL      = var.portal_url
+        identitySystem = "adfs"
         environment = {
           name                    = "AzureStackCloud"
           resourceManagerEndpoint = var.resource_manager_endpoint
@@ -12,7 +13,6 @@ locals {
           keyVaultEndpoint        = "https://vault.${var.cloud_suffix}/"
           storageEndpointSuffix   = var.cloud_suffix
           keyVaultDNSSuffix       = "vault.${var.cloud_suffix}"
-          identitySystem          = "adfs"
         }
       }
       orchestratorProfile = {
