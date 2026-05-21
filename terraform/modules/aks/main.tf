@@ -4,40 +4,30 @@ locals {
     properties = {
       customCloudProfile = {
         portalURL      = var.portal_url
-        identitySystem = "adfs"
-        environment = {
-          name                    = "AzureStackCloud"
-          resourceManagerEndpoint = var.resource_manager_endpoint
-          activeDirectoryEndpoint = var.active_directory_endpoint
-          graphEndpoint           = "https://graph.windows.net/"
-          keyVaultEndpoint        = "https://vault.${var.cloud_suffix}/"
-          storageEndpointSuffix   = var.cloud_suffix
-          keyVaultDNSSuffix       = "vault.${var.cloud_suffix}"
-        }
+        identitySystem = "azure_ad"    
       }
       orchestratorProfile = {
         orchestratorType    = "Kubernetes"
-        orchestratorVersion = var.k8s_version
+        orchestratorRelease = "1.31"   # ← Release pas Version
+        orchestratorVersion = "1.31.13" 
         kubernetesConfig = {
-          networkPlugin               = "azure"
+          networkPlugin              = "kubenet"    
           useCloudControllerManager  = true
+          containerRuntime           = "containerd"  
         }
       }
       masterProfile = {
-        count                    = var.master_count
-        dnsPrefix                = var.dns_prefix
-        vmSize                   = var.master_vm_size
-        distro                   = "aks-ubuntu-20.04"
-        vnetSubnetID             = var.subnet_aks_id
-        firstConsecutiveStaticIP = "10.0.1.5"
+        count     = var.master_count
+        dnsPrefix = var.dns_prefix
+        vmSize    = var.master_vm_size
+        distro    = "ubuntu-18.04"     
       }
       agentPoolProfiles = [
         {
           name                = "agentpool"
           count               = var.agent_count
           vmSize              = var.agent_vm_size
-          distro              = "aks-ubuntu-20.04"
-          vnetSubnetID        = var.subnet_aks_id
+          distro              = "ubuntu-18.04"       # ← changer
           availabilityProfile = "AvailabilitySet"
         }
       ]
@@ -55,12 +45,10 @@ locals {
       }
     }
   }
-
-  apimodel_path = abspath("${path.module}/apimodel.json")
 }
 
 resource "local_file" "api_model" {
   content         = jsonencode(local.api_model)
-  filename        = local.apimodel_path
+  filename        = "${path.module}/apimodel.json"
   file_permission = "0600"
 }

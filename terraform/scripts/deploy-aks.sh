@@ -20,6 +20,5 @@ aks-engine-azurestack deploy \
   --client-secret    "$AKS_CLIENT_SECRET" \
   --auth-method      client_secret        \
   --azure-env        AzureStackCloud      \
-  --identity-system  adfs                 \
   --force-overwrite                       \
   --output-directory "$OUTPUT_DIR"
