@@ -6,3 +6,7 @@
 .terraform.lock.hcl
 crash.log
 apimodel.json
+
+terraform/modules/aks/apimodel.json
+
+terraform/modules/aks/_output/
