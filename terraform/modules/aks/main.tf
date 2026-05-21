@@ -20,14 +20,14 @@ locals {
         count     = var.master_count
         dnsPrefix = var.dns_prefix
         vmSize    = var.master_vm_size
-        distro    = "ubuntu-18.04"     
+        distro    = "aks-ubuntu-20.04"    
       }
       agentPoolProfiles = [
         {
           name                = "agentpool"
           count               = var.agent_count
           vmSize              = var.agent_vm_size
-          distro              = "ubuntu-18.04"       # ← changer
+          distro              = "aks-ubuntu-20.04"      
           availabilityProfile = "AvailabilitySet"
         }
       ]
