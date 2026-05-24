@@ -122,7 +122,19 @@ resource "azurestack_network_security_group" "tools" {
     protocol                   = "Tcp"
     source_port_range          = "*"
     destination_port_range     = "8080"
-    source_address_prefix      = var.subnet_jumpbox_cidr  
+    source_address_prefix      = var.subnet_jumpbox_cidr
+    destination_address_prefix = "*"
+  }
+
+  security_rule {
+    name                       = "allow-sonarqube-from-jumpbox"
+    priority                   = 120
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "9000"
+    source_address_prefix      = var.subnet_jumpbox_cidr
     destination_address_prefix = "*"
   }
 
@@ -149,17 +161,6 @@ resource "azurestack_network_security_group" "tools" {
     source_address_prefix      = "*"
     destination_address_prefix = "Internet"
   }
-  security_rule {
-    name                       = "allow-sonarqube-from-jumpbox"
-    priority                   = 120
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "9000"
-    source_address_prefix      = var.subnet_jumpbox_cidr
-    destination_address_prefix = "*"
-  }
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -171,6 +172,20 @@ resource "azurestack_network_security_group" "aks" {
   location            = local.location
   resource_group_name = local.rg
 
+  # ── SSH depuis jumpbox ────────────────────────────────────────
+  security_rule {
+    name                       = "allow-ssh-from-jumpbox"
+    priority                   = 100
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = var.subnet_jumpbox_cidr
+    destination_address_prefix = "*"
+  }
+
+  # ── Kubernetes API depuis Jenkins ─────────────────────────────
   security_rule {
     name                       = "allow-kubeapi-from-jenkins"
     priority                   = 110
@@ -183,6 +198,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ── Trafic interne AKS ────────────────────────────────────────
   security_rule {
     name                       = "allow-intra-aks"
     priority                   = 120
@@ -195,6 +211,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = var.subnet_aks_cidr
   }
 
+  # ── Node Exporter (monitoring) ────────────────────────────────
   security_rule {
     name                       = "allow-node-exporter"
     priority                   = 130
@@ -207,6 +224,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ── Kubelet ───────────────────────────────────────────────────
   security_rule {
     name                       = "allow-kubelet"
     priority                   = 140
@@ -219,6 +237,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ── etcd ──────────────────────────────────────────────────────
   security_rule {
     name                       = "allow-etcd"
     priority                   = 145
@@ -231,6 +250,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = var.subnet_aks_cidr
   }
 
+  # ── HTTP Ingress ──────────────────────────────────────────────
   security_rule {
     name                       = "allow-http-ingress"
     priority                   = 150
@@ -243,6 +263,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ── HTTPS Ingress ─────────────────────────────────────────────
   security_rule {
     name                       = "allow-https-ingress"
     priority                   = 160
@@ -255,6 +276,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ── NodePort depuis jumpbox ───────────────────────────────────
   security_rule {
     name                       = "allow-nodeport-from-jumpbox"
     priority                   = 170
@@ -267,6 +289,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ── Deny all ──────────────────────────────────────────────────
   security_rule {
     name                       = "deny-all-inbound"
     priority                   = 4096
@@ -279,6 +302,7 @@ resource "azurestack_network_security_group" "aks" {
     destination_address_prefix = "*"
   }
 
+  # ── Outbound internet ─────────────────────────────────────────
   security_rule {
     name                       = "allow-outbound-internet"
     priority                   = 100
