@@ -1,0 +1,124 @@
+# ═══════════════════════════════════════
+# 1. SYSTEM UPDATE
+# ═══════════════════════════════════════
+- name: Update system packages
+  apt:
+    update_cache: yes
+    upgrade: dist
+    cache_valid_time: 3600
+
+- name: Install base tools
+  apt:
+    name:
+      - curl
+      - wget
+      - git
+      - unzip
+      - jq
+      - make
+      - gnupg
+      - apt-transport-https
+      - ca-certificates
+      - software-properties-common
+    state: present
+
+# ═══════════════════════════════════════
+# 2. KUBECTL
+# ═══════════════════════════════════════
+- name: Check if kubectl already installed
+  command: kubectl version --client
+  register: kubectl_check
+  changed_when: false
+  failed_when: false
+
+- name: Download kubectl
+  get_url:
+    url: "https://dl.k8s.io/release/{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+    owner: root
+    group: root
+  when: kubectl_check.rc != 0
+
+- name: Verify kubectl
+  command: kubectl version --client
+  register: kubectl_out
+  changed_when: false
+
+- name: Show kubectl version
+  debug:
+    msg: "kubectl : {{ kubectl_out.stdout }}"
+
+# ═══════════════════════════════════════
+# 3. HELM
+# ═══════════════════════════════════════
+- name: Check if helm already installed
+  command: helm version
+  register: helm_check
+  changed_when: false
+  failed_when: false
+
+- name: Download Helm archive
+  get_url:
+    url: "https://get.helm.sh/helm-{{ helm_version }}-linux-amd64.tar.gz"
+    dest: /tmp/helm.tar.gz
+    mode: '0644'
+  when: helm_check.rc != 0
+
+- name: Extract Helm archive
+  unarchive:
+    src: /tmp/helm.tar.gz
+    dest: /tmp
+    remote_src: yes
+  when: helm_check.rc != 0
+
+- name: Install Helm binary
+  copy:
+    src: /tmp/linux-amd64/helm
+    dest: /usr/local/bin/helm
+    mode: '0755'
+    remote_src: yes
+  when: helm_check.rc != 0
+
+- name: Verify Helm
+  command: helm version
+  register: helm_out
+  changed_when: false
+
+- name: Show Helm version
+  debug:
+    msg: "Helm : {{ helm_out.stdout }}"
+
+# ═══════════════════════════════════════
+# 4. KUBECONFIG
+# ═══════════════════════════════════════
+- name: Create .kube directory
+  file:
+    path: /home/nouradmin/.kube
+    state: directory
+    owner: nouradmin
+    group: nouradmin
+    mode: '0755'
+
+- name: Check if kubeconfig exists
+  stat:
+    path: /home/nouradmin/.kube/config
+  register: kubeconfig_stat
+
+- name: Show kubeconfig status
+  debug:
+    msg: "{{ ' kubeconfig présent' if kubeconfig_stat.stat.exists else ' kubeconfig manquant — copier manuellement' }}"
+
+# ═══════════════════════════════════════
+# 5. FINAL SUMMARY
+# ═══════════════════════════════════════
+- name: Final summary
+  debug:
+    msg:
+      - "════════════════════════════════════════"
+      - "         JUMPBOX READY"
+      - "════════════════════════════════════════"
+      - "kubectl   : {{ kubectl_out.stdout }}"
+      - "Helm      : {{ helm_out.stdout }}"
+      - "kubeconfig: {{ ' présent' if kubeconfig_stat.stat.exists else ' manquant' }}"
+      - "════════════════════════════════════════"
