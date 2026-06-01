@@ -455,7 +455,8 @@
 - name: Trouver le kubeconfig automatiquement
   tags: kubeconfig
   set_fact:
-    kubeconfig_local_path: "{{ lookup('fileglob', playbook_dir + '/../terraform/modules/aks/_output/*/kubeconfig/*.json') }}"
+        kubeconfig_local_path: "{{ lookup('fileglob', playbook_dir + '/../terraform/modules/aks/_output/kubeconfig/*.json') }}"
+
 
 - name: Afficher le kubeconfig trouvé
   tags: kubeconfig
