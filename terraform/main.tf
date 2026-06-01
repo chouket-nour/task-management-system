@@ -52,6 +52,7 @@ module "aks" {
   resource_manager_endpoint       = var.metadata_host
   active_directory_endpoint       = var.active_directory_endpoint
   cloud_suffix                    = var.cloud_suffix
-  service_cidr              = var.service_cidr    
-  dns_service_ip            = var.dns_service_ip 
+  pod_cidr                  = var.pod_cidr      
+  service_cidr              = var.service_cidr
+  dns_service_ip            = var.dns_service_ip
 }

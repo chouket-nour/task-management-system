@@ -14,9 +14,9 @@ locals {
           networkPlugin             = "azure"
           useCloudControllerManager = true
           containerRuntime          = "containerd"
-               clusterSubnet             = var.subnet_aks_cidr   
-               serviceCidr               = var.service_cidr       
-               dnsServiceIP              = var.dns_service_ip     
+          podCIDR                   = var.pod_cidr
+          serviceCidr               = var.service_cidr
+          dnsServiceIP              = var.dns_service_ip
         }
       }
       masterProfile = {
@@ -25,17 +25,16 @@ locals {
         vmSize                   = var.master_vm_size
         distro                   = "ubuntu-18.04"
         vnetSubnetID             = var.subnet_aks_id
-        firstConsecutiveStaticIP = "10.0.4.100"   
+        firstConsecutiveStaticIP = "10.0.4.100"
       }
       agentPoolProfiles = [
         {
-          name                     = "agentpool"
-          count                    = var.agent_count
-          vmSize                   = var.agent_vm_size
-          distro                   = "ubuntu-18.04"
-          availabilityProfile      = "AvailabilitySet"
-          vnetSubnetID             = var.subnet_aks_id
-          
+          name                = "agentpool"
+          count               = var.agent_count
+          vmSize              = var.agent_vm_size
+          distro              = "ubuntu-18.04"
+          availabilityProfile = "AvailabilitySet"
+          vnetSubnetID        = var.subnet_aks_id
         }
       ]
       linuxProfile = {
