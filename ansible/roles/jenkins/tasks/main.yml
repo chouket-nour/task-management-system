@@ -484,7 +484,7 @@
 - name: Vérifier que Jenkins accède au cluster
   tags: kubeconfig
   command: kubectl --kubeconfig={{ jenkins_home }}/.kube/config get nodes
-  become_user: jenkins
+  become: true
   register: kubectl_nodes
   changed_when: false
   failed_when: false
