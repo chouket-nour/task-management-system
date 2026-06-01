@@ -87,7 +87,7 @@ variable "vnet_address_space" {
 variable "kubernetes_version" {
   description = "Version Kubernetes"
   type        = string
-  default     = "1.31.13"
+  default     = "1.24.9"
 }
 variable "admin_ip" {
   description = "IP publique admin autorisée à SSH sur le jumpbox "
@@ -140,4 +140,14 @@ variable "active_directory_endpoint" {
 variable "cloud_suffix" {
   type = string
 }
+variable "service_cidr" {
+  type        = string
+  default     = "10.0.8.0/24"
+  description = "CIDR des services Kubernetes"
+}
 
+variable "dns_service_ip" {
+  type        = string
+  default     = "10.0.8.10"
+  description = "IP DNS Kubernetes"
+}

@@ -4,31 +4,38 @@ locals {
     properties = {
       customCloudProfile = {
         portalURL      = var.portal_url
-        identitySystem = "azure_ad"    
+        identitySystem = "azure_ad"
       }
       orchestratorProfile = {
         orchestratorType    = "Kubernetes"
-        orchestratorRelease = "1.31"   # ← Release pas Version
-        orchestratorVersion = "1.31.13" 
+        orchestratorRelease = "1.24"
+        orchestratorVersion = "1.24.9"
         kubernetesConfig = {
-          networkPlugin              = "kubenet"    
-          useCloudControllerManager  = true
-          containerRuntime           = "containerd"  
+          networkPlugin             = "azure"
+          useCloudControllerManager = true
+          containerRuntime          = "containerd"
+               clusterSubnet             = var.subnet_aks_cidr   
+               serviceCidr               = var.service_cidr       
+               dnsServiceIP              = var.dns_service_ip     
         }
       }
       masterProfile = {
-        count     = var.master_count
-        dnsPrefix = var.dns_prefix
-        vmSize    = var.master_vm_size
-        distro    = "aks-ubuntu-20.04"    
+        count                    = var.master_count
+        dnsPrefix                = var.dns_prefix
+        vmSize                   = var.master_vm_size
+        distro                   = "ubuntu-18.04"
+        vnetSubnetID             = var.subnet_aks_id
+        firstConsecutiveStaticIP = "10.0.4.100"   
       }
       agentPoolProfiles = [
         {
-          name                = "agentpool"
-          count               = var.agent_count
-          vmSize              = var.agent_vm_size
-          distro              = "aks-ubuntu-20.04"      
-          availabilityProfile = "AvailabilitySet"
+          name                     = "agentpool"
+          count                    = var.agent_count
+          vmSize                   = var.agent_vm_size
+          distro                   = "ubuntu-18.04"
+          availabilityProfile      = "AvailabilitySet"
+          vnetSubnetID             = var.subnet_aks_id
+          
         }
       ]
       linuxProfile = {

@@ -28,7 +28,7 @@ variable "subnet_tools_cidr" {
 
 variable "subnet_aks_cidr" {
   type        = string
-  default     = "10.0.1.0/24"
+     default = "10.0.4.0/22" 
   description = "CIDR du subnet AKS"
 }
 
