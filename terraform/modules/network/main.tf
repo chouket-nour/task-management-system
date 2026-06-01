@@ -194,7 +194,7 @@ resource "azurestack_network_security_group" "aks" {
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "6443"
+    destination_port_range     = "443 "
     source_address_prefix      = var.jenkins_private_ip
     destination_address_prefix = "*"
   }
@@ -323,7 +323,7 @@ security_rule {
   access                     = "Allow"
   protocol                   = "Tcp"
   source_port_range          = "*"
-  destination_port_range     = "6443"
+  destination_port_range     = "443 "
   source_address_prefix      = var.subnet_jumpbox_cidr
   destination_address_prefix = "*"
 }
