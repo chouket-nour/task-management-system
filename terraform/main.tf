@@ -1,11 +1,9 @@
-
 provider "azurestack" {
   metadata_host   = var.metadata_host
   client_id       = var.client_id
   client_secret   = var.secret_value
   subscription_id = var.subscription_id
   tenant_id       = var.tenant_id
-
   features {}
 }
 
@@ -29,30 +27,28 @@ module "vm" {
   vm_size_jumpbox     = var.vm_size
   vm_size_jenkins     = var.vm_size
 }
+
 module "aks" {
   source = "./modules/aks"
 
-  resource_group_name             = var.resource_group_name
-  location                        = var.location
-  project_name                    = var.project_name
-  subnet_aks_id                   = module.network.subnet_aks_id
-  subnet_aks_cidr                 = var.subnet_aks_cidr
-  admin_username                  = var.admin_username
-  ssh_public_key                  = var.ssh_public_key
-  master_vm_size                  = var.master_vm_size
-  agent_vm_size                   = var.agent_vm_size
-  master_count                    = var.master_count
-  agent_count                     = var.agent_count
-  subscription_id                 = var.subscription_id
-  tenant_id                       = var.tenant_id
-  resource_group_id               = var.resource_group_id
-  client_id                       = var.client_id
-  secret_value                    = var.secret_value
-  portal_url                      = var.portal_url
-  resource_manager_endpoint       = var.metadata_host
-  active_directory_endpoint       = var.active_directory_endpoint
-  cloud_suffix                    = var.cloud_suffix
-  pod_cidr                  = var.pod_cidr      
-  service_cidr              = var.service_cidr
-  dns_service_ip            = var.dns_service_ip
+  resource_group_name       = var.resource_group_name
+  location                  = var.location
+  project_name              = var.project_name
+  subnet_aks_id             = module.network.subnet_aks_id
+  subnet_aks_cidr           = var.subnet_aks_cidr
+  admin_username            = var.admin_username
+  ssh_public_key            = var.ssh_public_key
+  master_vm_size            = var.master_vm_size
+  agent_vm_size             = var.agent_vm_size
+  master_count              = var.master_count
+  agent_count               = var.agent_count
+  subscription_id           = var.subscription_id
+  tenant_id                 = var.tenant_id
+  resource_group_id         = var.resource_group_id
+  client_id                 = var.client_id
+  secret_value              = var.secret_value
+  portal_url                = var.portal_url
+  resource_manager_endpoint = var.metadata_host
+  active_directory_endpoint = var.active_directory_endpoint
+  cloud_suffix              = var.cloud_suffix
 }

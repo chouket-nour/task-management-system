@@ -47,7 +47,7 @@ variable "subnet_aks_id" {
 
 variable "subnet_aks_cidr" {
   type    = string
-  default = "10.0.4.0/22"   
+  default = "10.0.4.0/22"
 }
 
 variable "admin_username" {
@@ -93,19 +93,4 @@ variable "active_directory_endpoint" {
 
 variable "cloud_suffix" {
   type = string
-}
-
-# ── Réseau Kubernetes ─────────────────────────────────────────────────────────
-variable "pod_cidr" {
-  type        = string
-  description = "CIDR des pods Kubernetes"
-}
-variable "service_cidr" {
-  type        = string
-  description = "CIDR des services Kubernetes"
-}
-
-variable "dns_service_ip" {
-  type        = string
-  description = "IP DNS Kubernetes"
 }

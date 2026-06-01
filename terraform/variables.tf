@@ -140,16 +140,3 @@ variable "active_directory_endpoint" {
 variable "cloud_suffix" {
   type = string
 }
-variable "pod_cidr" {
-  type        = string
-  description = "CIDR des pods Kubernetes"
-}
-variable "service_cidr" {
-  type        = string
-  description = "CIDR des services Kubernetes"
-}
-
-variable "dns_service_ip" {
-  type        = string
-  description = "IP DNS Kubernetes"
-}

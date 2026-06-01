@@ -11,12 +11,9 @@ locals {
         orchestratorRelease = "1.24"
         orchestratorVersion = "1.24.9"
         kubernetesConfig = {
-          networkPlugin             = "azure"
+          networkPlugin             = "kubenet"
           useCloudControllerManager = true
           containerRuntime          = "containerd"
-          podCIDR                   = var.pod_cidr
-          serviceCidr               = var.service_cidr
-          dnsServiceIP              = var.dns_service_ip
         }
       }
       masterProfile = {
