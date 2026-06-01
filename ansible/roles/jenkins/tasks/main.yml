@@ -106,9 +106,6 @@
     - /usr/share/keyrings/docker.gpg
     - /etc/apt/sources.list.d/docker.list
 
-- name: Convert Docker key to gpg
-  shell: |
-    gpg --dearmor -o /usr/share/keyrings/docker.gpg /tmp/docker.key
 - name: Download Docker key
   get_url:
     url: https://download.docker.com/linux/ubuntu/gpg
@@ -158,7 +155,6 @@
 
 # ═══════════════════════════════════════
 # 5. DOCKER COMPOSE STANDALONE
-#    (nécessaire pour "docker-compose" dans le Jenkinsfile)
 # ═══════════════════════════════════════
 - name: Get latest docker-compose version
   uri:
@@ -193,11 +189,13 @@
     name: jenkins
     groups: docker
     append: yes
+
 - name: Add nouradmin to docker group
   user:
     name: nouradmin
     groups: docker
     append: yes
+
 - name: Run SonarQube container
   community.docker.docker_container:
     name: sonarqube
@@ -206,6 +204,7 @@
     restart_policy: unless-stopped
     ports:
       - "9000:9000"
+
 # ═══════════════════════════════════════
 # 7. CACHE SETUP
 # ═══════════════════════════════════════
@@ -229,8 +228,6 @@
     - mongodb-binaries
     - trivy
 
-# IMPORTANT : crée aussi .npm-cache à la racine
-# car le Jenkinsfile utilise JENKINS_CACHE_ROOT/.npm-cache
 - name: Create npm-cache root directory
   file:
     path: "{{ jenkins_home }}/.npm-cache"
@@ -249,7 +246,7 @@
     mode: '0644'
 
 # ═══════════════════════════════════════
-# 8. SYSTEMD OVERRIDE (HOME + NPM CACHE)
+# 8. SYSTEMD OVERRIDE
 # ═══════════════════════════════════════
 - name: Create Jenkins systemd override directory
   file:
@@ -453,7 +450,51 @@
   failed_when: false
 
 # ═══════════════════════════════════════
-# 15. FINAL SUMMARY
+# 15. KUBECONFIG POUR JENKINS
+# ═══════════════════════════════════════
+- name: Trouver le kubeconfig automatiquement
+  tags: kubeconfig
+  set_fact:
+    kubeconfig_local_path: "{{ lookup('fileglob', playbook_dir + '/../terraform/modules/aks/_output/*/kubeconfig/*.json') }}"
+
+- name: Afficher le kubeconfig trouvé
+  tags: kubeconfig
+  debug:
+    msg: "Kubeconfig trouvé : {{ kubeconfig_local_path }}"
+
+- name: Créer le répertoire .kube pour Jenkins
+  tags: kubeconfig
+  file:
+    path: "{{ jenkins_home }}/.kube"
+    state: directory
+    owner: jenkins
+    group: jenkins
+    mode: '0755'
+
+- name: Copier le kubeconfig vers Jenkins
+  tags: kubeconfig
+  copy:
+    src: "{{ kubeconfig_local_path }}"
+    dest: "{{ jenkins_home }}/.kube/config"
+    owner: jenkins
+    group: jenkins
+    mode: '0600'
+
+- name: Vérifier que Jenkins accède au cluster
+  tags: kubeconfig
+  command: kubectl --kubeconfig={{ jenkins_home }}/.kube/config get nodes
+  become_user: jenkins
+  register: kubectl_nodes
+  changed_when: false
+  failed_when: false
+
+- name: Afficher les nodes accessibles depuis Jenkins
+  tags: kubeconfig
+  debug:
+    msg: "{{ kubectl_nodes.stdout }}"
+
+# ═══════════════════════════════════════
+# 16. FINAL SUMMARY
 # ═══════════════════════════════════════
 - name: Installation summary
   debug:
@@ -469,6 +510,7 @@
       - "Helm          : {{ helm_version.stdout }}"
       - "SonarScanner  : /opt/sonar-scanner"
       - "Jenkins URL   : http://{{ ansible_host }}:8080"
+      - "Kubeconfig    : {{ jenkins_home }}/.kube/config"
       - "Mot de passe  : {{ jenkins_password.stdout | default('déjà configuré') }}"
       - "════════════════════════════════════════════"
       - "CACHE NPM     : {{ jenkins_home }}/.npm-cache"
@@ -476,5 +518,3 @@
       - "CACHE TRIVY   : {{ jenkins_home }}/.cache/trivy"
       - "CACHE SONAR   : {{ jenkins_home }}/.sonar"
       - "════════════════════════════════════════════"
-
-   
