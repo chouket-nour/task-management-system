@@ -1,0 +1,49 @@
+# ── Image ────────────────────────────────────────────────────────────
+image:
+  registry: nourchouket2000
+  tag: latest
+  pullPolicy: Always
+
+# ── Replicas ─────────────────────────────────────────────────────────
+replicas:
+  auth:         1
+  user:         1
+  task:         1
+  project:      1
+  conge:        1
+  notification: 1
+  gateway:      1
+  frontend:     1
+  mongodb:      1
+
+# ── Resources ────────────────────────────────────────────────────────
+resources:
+  requests:
+    cpu:    "100m"
+    memory: "128Mi"
+  limits:
+    cpu:    "500m"
+    memory: "512Mi"
+
+# ── MongoDB ──────────────────────────────────────────────────────────
+mongo:
+  uriAuth:    "mongodb://mongodb:27017/auth"
+  uriUser:    "mongodb://mongodb:27017/user"
+  uriTask:    "mongodb://mongodb:27017/task"
+  uriProject: "mongodb://mongodb:27017/project"
+  uriConge:   "mongodb://mongodb:27017/conge"
+  uriNotif:   "mongodb://mongodb:27017/notif"
+
+# ── Secrets ──────────────────────────────────────────────────────────
+secrets:
+  jwtSecret: ""
+
+# ── Services URLs ────────────────────────────────────────────────────
+services:
+  authUrl:    "http://auth-service:5001"
+  userUrl:    "http://user-service:5002"
+  taskUrl:    "http://task-service:5003"
+  projectUrl: "http://project-service:5004"
+  congeUrl:   "http://conge-service:5005"
+  notifUrl:   "http://notification-service:5006"
+  apiUrl:     "http://api-gateway:5000"
