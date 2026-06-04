@@ -21,6 +21,8 @@ spec:
             - containerPort: 5001
           env:
             {{- include "rfc.env.common" . | nindent 12 }}
+            - name: MONGO_URI
+              value: {{ .Values.mongo.uriAuth }}
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}
