@@ -13,6 +13,7 @@ spec:
       labels:
         app: conge-service
     spec:
+      serviceAccountName: rfc-waiter
       {{- include "rfc.init.mongodb" . | nindent 6 }}
       containers:
         - name: conge-service

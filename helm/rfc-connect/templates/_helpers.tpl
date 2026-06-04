@@ -21,19 +21,17 @@
 {{- define "rfc.init.mongodb" -}}
 initContainers:
   - name: wait-mongodb
-    image: busybox
-    command:
-      - sh
-      - -c
-      - until nc -z mongodb 27017; do echo "waiting for mongodb..."; sleep 2; done
+    image: groundnuty/k8s-wait-for:no-root-v1.7
+    args:
+      - "pod"
+      - "-lapp=mongodb"
 {{- end }}
 
 {{- define "rfc.init.apigateway" -}}
 initContainers:
   - name: wait-api-gateway
-    image: busybox
-    command:
-      - sh
-      - -c
-      - until nc -z api-gateway 5000; do echo "waiting for api-gateway..."; sleep 2; done
+    image: groundnuty/k8s-wait-for:no-root-v1.7
+    args:
+      - "pod"
+      - "-lapp=api-gateway"
 {{- end }}

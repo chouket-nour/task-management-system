@@ -13,6 +13,7 @@ spec:
       labels:
         app: frontend
     spec:
+      serviceAccountName: rfc-waiter
       {{- include "rfc.init.apigateway" . | nindent 6 }}
       containers:
         - name: frontend

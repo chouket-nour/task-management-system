@@ -13,6 +13,7 @@ spec:
       labels:
         app: api-gateway
     spec:
+      serviceAccountName: rfc-waiter
       {{- include "rfc.init.mongodb" . | nindent 6 }}
       containers:
         - name: api-gateway
