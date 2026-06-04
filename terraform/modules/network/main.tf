@@ -211,6 +211,18 @@ resource "azurestack_network_security_group" "aks" {
     source_address_prefix      = var.subnet_aks_cidr
     destination_address_prefix = var.subnet_aks_cidr
   }
+  # ── Trafic inter-pods kubenet ─────────────────────────────────
+security_rule {
+  name                       = "allow-pod-cidr"
+  priority                   = 125
+  direction                  = "Inbound"
+  access                     = "Allow"
+  protocol                   = "*"
+  source_port_range          = "*"
+  destination_port_range     = "*"
+  source_address_prefix      = "10.244.0.0/16"
+  destination_address_prefix = "10.244.0.0/16"
+}
 
   # ── Node Exporter (monitoring) ────────────────────────────────
   security_rule {
