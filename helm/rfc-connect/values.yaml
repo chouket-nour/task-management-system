@@ -1,10 +1,8 @@
-# ── Image ────────────────────────────────────────────────────────────
 image:
   registry: nourchouket2000
   tag: latest
   pullPolicy: Always
 
-# ── Replicas ─────────────────────────────────────────────────────────
 replicas:
   auth:         1
   user:         1
@@ -16,7 +14,6 @@ replicas:
   frontend:     1
   mongodb:      1
 
-# ── Resources ────────────────────────────────────────────────────────
 resources:
   requests:
     cpu:    "100m"
@@ -25,7 +22,6 @@ resources:
     cpu:    "500m"
     memory: "512Mi"
 
-# ── MongoDB ──────────────────────────────────────────────────────────
 mongo:
   uriAuth:    "mongodb://mongodb:27017/auth"
   uriUser:    "mongodb://mongodb:27017/user"
@@ -34,11 +30,9 @@ mongo:
   uriConge:   "mongodb://mongodb:27017/conge"
   uriNotif:   "mongodb://mongodb:27017/notif"
 
-# ── Secrets ──────────────────────────────────────────────────────────
 secrets:
   jwtSecret: ""
 
-# ── Services URLs ────────────────────────────────────────────────────
 services:
   authUrl:    "http://auth-service:5001"
   userUrl:    "http://user-service:5002"

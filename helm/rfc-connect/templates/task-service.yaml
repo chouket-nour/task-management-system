@@ -14,6 +14,7 @@ spec:
         app: task-service
     spec:
       serviceAccountName: rfc-waiter
+      {{- include "rfc.dns.config" . | nindent 6 }}
       {{- include "rfc.init.mongodb" . | nindent 6 }}
       containers:
         - name: task-service

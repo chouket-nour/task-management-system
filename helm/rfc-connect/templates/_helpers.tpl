@@ -18,6 +18,15 @@
   value: {{ .Values.services.notifUrl }}
 {{- end }}
 
+{{- define "rfc.dns.config" -}}
+dnsPolicy: ClusterFirst
+dnsConfig:
+  searches:
+    - {{ .Release.Namespace }}.svc.cluster.local
+    - svc.cluster.local
+    - cluster.local
+{{- end }}
+
 {{- define "rfc.init.mongodb" -}}
 initContainers:
   - name: wait-mongodb
