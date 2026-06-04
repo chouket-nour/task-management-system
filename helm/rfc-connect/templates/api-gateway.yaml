@@ -13,6 +13,7 @@ spec:
       labels:
         app: api-gateway
     spec:
+      {{- include "rfc.init.mongodb" . | nindent 6 }}
       containers:
         - name: api-gateway
           image: {{ .Values.image.registry }}/rfc-api-gateway:{{ .Values.image.tag }}

@@ -13,6 +13,7 @@ spec:
       labels:
         app: frontend
     spec:
+      {{- include "rfc.init.apigateway" . | nindent 6 }}
       containers:
         - name: frontend
           image: {{ .Values.image.registry }}/rfc-frontend:{{ .Values.image.tag }}
@@ -29,6 +30,18 @@ spec:
             limits:
               cpu: {{ .Values.resources.limits.cpu }}
               memory: {{ .Values.resources.limits.memory }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 5
 ---
 apiVersion: v1
 kind: Service

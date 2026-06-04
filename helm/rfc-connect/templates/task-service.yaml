@@ -13,6 +13,7 @@ spec:
       labels:
         app: task-service
     spec:
+      {{- include "rfc.init.mongodb" . | nindent 6 }}
       containers:
         - name: task-service
           image: {{ .Values.image.registry }}/rfc-task-service:{{ .Values.image.tag }}

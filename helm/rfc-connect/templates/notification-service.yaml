@@ -13,6 +13,7 @@ spec:
       labels:
         app: notification-service
     spec:
+      {{- include "rfc.init.mongodb" . | nindent 6 }}
       containers:
         - name: notification-service
           image: {{ .Values.image.registry }}/rfc-notification-service:{{ .Values.image.tag }}
