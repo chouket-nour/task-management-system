@@ -33,21 +33,21 @@ probes:
     failureThreshold: 5
 
 mongo:
-  uriAuth:    "mongodb://mongodb:27017/auth"
-  uriUser:    "mongodb://mongodb:27017/user"
-  uriTask:    "mongodb://mongodb:27017/task"
-  uriProject: "mongodb://mongodb:27017/project"
-  uriConge:   "mongodb://mongodb:27017/conge"
-  uriNotif:   "mongodb://mongodb:27017/notif"
+  uriAuth:    "mongodb://mongodb.dev.svc.cluster.local:27017/auth"
+  uriUser:    "mongodb://mongodb.dev.svc.cluster.local:27017/user"
+  uriTask:    "mongodb://mongodb.dev.svc.cluster.local:27017/task"
+  uriProject: "mongodb://mongodb.dev.svc.cluster.local:27017/project"
+  uriConge:   "mongodb://mongodb.dev.svc.cluster.local:27017/conge"
+  uriNotif:   "mongodb://mongodb.dev.svc.cluster.local:27017/notif"
 
 secrets:
   jwtSecret: ""
 
 services:
-  authUrl:    "http://auth-service:5001"
-  userUrl:    "http://user-service:5002"
-  taskUrl:    "http://task-service:5003"
-  projectUrl: "http://project-service:5004"
-  congeUrl:   "http://conge-service:5005"
-  notifUrl:   "http://notification-service:5006"
-  apiUrl:     "http://api-gateway:5000"
+  authUrl:    "http://auth-service.dev.svc.cluster.local:5001"
+  userUrl:    "http://user-service.dev.svc.cluster.local:5002"
+  taskUrl:    "http://task-service.dev.svc.cluster.local:5003"
+  projectUrl: "http://project-service.dev.svc.cluster.local:5004"
+  congeUrl:   "http://conge-service.dev.svc.cluster.local:5005"
+  notifUrl:   "http://notification-service.dev.svc.cluster.local:5006"
+  apiUrl:     "http://api-gateway.dev.svc.cluster.local:5000"
