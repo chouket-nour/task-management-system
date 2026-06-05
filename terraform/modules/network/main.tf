@@ -91,7 +91,6 @@ resource "azurestack_network_security_group" "jumpbox" {
     source_address_prefix      = "*"
     destination_address_prefix = "Internet"
   }
-  
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -194,12 +193,25 @@ resource "azurestack_network_security_group" "aks" {
     access                     = "Allow"
     protocol                   = "Tcp"
     source_port_range          = "*"
-    destination_port_range     = "443 "
+    destination_port_range     = "443"
     source_address_prefix      = var.jenkins_private_ip
     destination_address_prefix = "*"
   }
 
-  # ── Trafic interne AKS ────────────────────────────────────────
+  # ── Kubernetes API depuis jumpbox ─────────────────────────────
+  security_rule {
+    name                       = "allow-kubeapi-from-jumpbox"
+    priority                   = 111
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "Tcp"
+    source_port_range          = "*"
+    destination_port_range     = "443"
+    source_address_prefix      = var.subnet_jumpbox_cidr
+    destination_address_prefix = "*"
+  }
+
+  # ── Trafic interne AKS (node↔node) ───────────────────────────
   security_rule {
     name                       = "allow-intra-aks"
     priority                   = 120
@@ -211,18 +223,45 @@ resource "azurestack_network_security_group" "aks" {
     source_address_prefix      = var.subnet_aks_cidr
     destination_address_prefix = var.subnet_aks_cidr
   }
-  # ── Trafic inter-pods kubenet ─────────────────────────────────
-security_rule {
-  name                       = "allow-pod-cidr"
-  priority                   = 125
-  direction                  = "Inbound"
-  access                     = "Allow"
-  protocol                   = "*"
-  source_port_range          = "*"
-  destination_port_range     = "*"
-  source_address_prefix      = "10.244.0.0/16"
-  destination_address_prefix = "10.244.0.0/16"
-}
+
+  # ── Trafic inter-pods kubenet (pod CIDR → pod CIDR) ───────────
+  security_rule {
+    name                       = "allow-pod-cidr"
+    priority                   = 125
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "10.244.0.0/16"
+    destination_address_prefix = "10.244.0.0/16"
+  }
+
+  # ── DNS depuis pods ───────────────────────────────────────────
+  security_rule {
+    name                       = "allow-pods-to-dns"
+    priority                   = 126
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "53"
+    source_address_prefix      = "10.244.0.0/16"
+    destination_address_prefix = "*"
+  }
+
+  # ── Nodes → pods kubenet (routing inter-nœuds) ────────────────
+  security_rule {
+    name                       = "allow-node-to-pod-cidr"
+    priority                   = 128
+    direction                  = "Inbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = var.subnet_aks_cidr
+    destination_address_prefix = "10.244.0.0/16"
+  }
 
   # ── Node Exporter (monitoring) ────────────────────────────────
   security_rule {
@@ -302,7 +341,7 @@ security_rule {
     destination_address_prefix = "*"
   }
 
-  # ── Deny all ──────────────────────────────────────────────────
+  # ── Deny all inbound ──────────────────────────────────────────
   security_rule {
     name                       = "deny-all-inbound"
     priority                   = 4096
@@ -315,10 +354,23 @@ security_rule {
     destination_address_prefix = "*"
   }
 
-  # ── Outbound internet ─────────────────────────────────────────
+  # ── Outbound : pods → tout ────────────────────────────────────
+  security_rule {
+    name                       = "allow-pods-outbound"
+    priority                   = 100
+    direction                  = "Outbound"
+    access                     = "Allow"
+    protocol                   = "*"
+    source_port_range          = "*"
+    destination_port_range     = "*"
+    source_address_prefix      = "10.244.0.0/16"
+    destination_address_prefix = "*"
+  }
+
+  # ── Outbound : nodes → internet ───────────────────────────────
   security_rule {
     name                       = "allow-outbound-internet"
-    priority                   = 100
+    priority                   = 110
     direction                  = "Outbound"
     access                     = "Allow"
     protocol                   = "*"
@@ -327,18 +379,43 @@ security_rule {
     source_address_prefix      = "*"
     destination_address_prefix = "Internet"
   }
-  # ── Kubernetes API depuis jumpbox ─────────────────────────────
-security_rule {
-  name                       = "allow-kubeapi-from-jumpbox"
-  priority                   = 111
-  direction                  = "Inbound"
-  access                     = "Allow"
-  protocol                   = "Tcp"
-  source_port_range          = "*"
-  destination_port_range     = "443 "
-  source_address_prefix      = var.subnet_jumpbox_cidr
-  destination_address_prefix = "*"
 }
+
+# ══════════════════════════════════════════════════════════════════
+# ROUTE TABLE — kubenet inter-node routing
+# ══════════════════════════════════════════════════════════════════
+
+resource "azurestack_route_table" "aks" {
+  name                = "${var.project_name}-rt-aks"
+  location            = local.location
+  resource_group_name = local.rg
+}
+
+resource "azurestack_route" "pod_cidr_master" {
+  name                   = "pod-cidr-master"
+  resource_group_name    = local.rg
+  route_table_name       = azurestack_route_table.aks.name
+  address_prefix         = "10.244.1.0/24"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = "10.0.4.100"
+}
+
+resource "azurestack_route" "pod_cidr_agent0" {
+  name                   = "pod-cidr-agent0"
+  resource_group_name    = local.rg
+  route_table_name       = azurestack_route_table.aks.name
+  address_prefix         = "10.244.2.0/24"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = "10.0.4.4"
+}
+
+resource "azurestack_route" "pod_cidr_agent1" {
+  name                   = "pod-cidr-agent1"
+  resource_group_name    = local.rg
+  route_table_name       = azurestack_route_table.aks.name
+  address_prefix         = "10.244.0.0/24"
+  next_hop_type          = "VirtualAppliance"
+  next_hop_in_ip_address = "10.0.4.5"
 }
 
 # ══════════════════════════════════════════════════════════════════
@@ -357,6 +434,10 @@ resource "azurestack_template_deployment" "nsg_associations" {
     azurestack_network_security_group.jumpbox,
     azurestack_network_security_group.tools,
     azurestack_network_security_group.aks,
+    azurestack_route_table.aks,
+    azurestack_route.pod_cidr_master,
+    azurestack_route.pod_cidr_agent0,
+    azurestack_route.pod_cidr_agent1,
   ]
 
   template_body = jsonencode({
@@ -388,6 +469,7 @@ resource "azurestack_template_deployment" "nsg_associations" {
         properties = {
           addressPrefix        = var.subnet_aks_cidr
           networkSecurityGroup = { id = azurestack_network_security_group.aks.id }
+          routeTable           = { id = azurestack_route_table.aks.id }
         }
       }
     ]
