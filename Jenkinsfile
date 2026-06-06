@@ -14,7 +14,7 @@ pipeline {
         REGISTRY         = "nourchouket2000"
         BACKEND_SERVICES = "auth-service,user-service,task-service,project-service,conge-service,notification-service,api-gateway"
 
-        // ── MongoDB URIs ──
+        // ── MongoDB URIs (local) ──
         MONGO_URI_AUTH    = "mongodb://mongodb:27017/auth"
         MONGO_URI_USER    = "mongodb://mongodb:27017/user"
         MONGO_URI_TASK    = "mongodb://mongodb:27017/task"
@@ -22,14 +22,17 @@ pipeline {
         MONGO_URI_CONGE   = "mongodb://mongodb:27017/conge"
         MONGO_URI_NOTIF   = "mongodb://mongodb:27017/notif"
 
-        // ── URLs des services ──
+        // ── URLs des services (local) ──
         AUTH_SERVICE_URL    = "http://auth-service:5001"
         USER_SERVICE_URL    = "http://user-service:5002"
         TASK_SERVICE_URL    = "http://task-service:5003"
         PROJECT_SERVICE_URL = "http://project-service:5004"
         CONGE_SERVICE_URL   = "http://conge-service:5005"
         NOTIF_SERVICE_URL   = "http://notification-service:5006"
-        REACT_APP_API_URL   = "http://localhost:5000"
+
+        // ── API URLs selon environnement ──
+        REACT_APP_API_URL_LOCAL = "http://localhost:5000"
+        REACT_APP_API_URL_CLOUD = "http://102.141.206.201:5000"
 
         // ── Docker & Build ──
         DOCKER_BUILDKIT  = "1"
@@ -37,15 +40,12 @@ pipeline {
 
         // ── Désactiver postinstall MongoDB ──
         MONGOMS_DISABLE_POSTINSTALL = "1"
-
-        // ── Les chemins de cache seront définis dynamiquement
-        //    dans le stage 'Detect Environment' ──
     }
 
     stages {
 
         // ══════════════════════════════════════════════════════════════
-        // DETECT ENVIRONMENT (local vs cloud)
+        // DETECT ENVIRONMENT
         // ══════════════════════════════════════════════════════════════
         stage('Detect Environment') {
             steps {
@@ -56,29 +56,32 @@ pipeline {
                     ).trim()
 
                     if (jenkinsHome == '/var/lib/jenkins') {
-                        // ── VM Azure / Cloud ──
                         env.JENKINS_CACHE_ROOT = '/var/lib/jenkins'
                         env.DEPLOY_ENV         = 'cloud'
                     } else {
-                        // ── Local (Docker Jenkins) ──
                         env.JENKINS_CACHE_ROOT = '/var/jenkins_home'
                         env.DEPLOY_ENV         = 'local-machine'
                     }
 
-                    // Définir les chemins de cache dynamiquement
                     env.NPM_CONFIG_CACHE     = "${env.JENKINS_CACHE_ROOT}/.npm-cache"
                     env.MONGOMS_DOWNLOAD_DIR = "${env.JENKINS_CACHE_ROOT}/.cache/mongodb-binaries"
                     env.TRIVY_CACHE_DIR      = "${env.JENKINS_CACHE_ROOT}/.cache/trivy"
 
+                    // ── URL API dynamique selon le mode de déploiement ──
+                    env.REACT_APP_API_URL = (params.DEPLOY_TARGET == 'k8s')
+                        ? env.REACT_APP_API_URL_CLOUD
+                        : env.REACT_APP_API_URL_LOCAL
+
                     echo "════════════════════════════════════════════"
                     echo " Environnement détecté : ${env.DEPLOY_ENV}"
                     echo " HOME Jenkins          : ${jenkinsHome}"
+                    echo " Deploy Target         : ${params.DEPLOY_TARGET}"
+                    echo " REACT_APP_API_URL     : ${env.REACT_APP_API_URL}"
                     echo " Cache NPM             : ${env.NPM_CONFIG_CACHE}"
                     echo " Cache MongoDB         : ${env.MONGOMS_DOWNLOAD_DIR}"
                     echo " Cache Trivy           : ${env.TRIVY_CACHE_DIR}"
                     echo "════════════════════════════════════════════"
 
-                    // Créer les dossiers de cache s'ils n'existent pas
                     sh """
                         mkdir -p ${env.NPM_CONFIG_CACHE}
                         mkdir -p ${env.MONGOMS_DOWNLOAD_DIR}
@@ -89,7 +92,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════════════
-        // VALIDATE CREDENTIALS (avant tout autre stage)
+        // VALIDATE CREDENTIALS
         // ══════════════════════════════════════════════════════════════
         stage('Validate Credentials') {
             steps {
@@ -103,6 +106,15 @@ pipeline {
                             string(credentialsId: 'docker-password', variable: 'DOCKER_PASS')
                         ]) {
                             echo "Credentials Docker OK"
+                        }
+                    }
+                    if (params.DEPLOY_TARGET == 'k8s') {
+                        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                            echo "Credential kubeconfig OK"
+                            sh """
+                                export KUBECONFIG=\$KUBECONFIG_FILE
+                                kubectl get nodes
+                            """
                         }
                     }
                 }
@@ -314,7 +326,6 @@ pipeline {
                 sh '''
                     echo "=== TOUS les lcov.info dans le workspace ==="
                     find ${WORKSPACE} -name "lcov.info" 2>/dev/null | grep -v node_modules
-
                     echo "=== TOUS les dossiers coverage ==="
                     find ${WORKSPACE} -type d -name "coverage" 2>/dev/null | grep -v node_modules
                 '''
@@ -373,7 +384,7 @@ pipeline {
         }
 
         // ══════════════════════════════════════════════════════════════
-        // DOCKER
+        // DOCKER LOGIN
         // ══════════════════════════════════════════════════════════════
         stage('Docker Login') {
             when { expression { !params.SKIP_DOCKER } }
@@ -387,6 +398,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // BUILD DOCKER
+        // ══════════════════════════════════════════════════════════════
         stage('Build Docker') {
             when { expression { !params.SKIP_DOCKER } }
             steps {
@@ -401,8 +415,12 @@ pipeline {
                     services.add('frontend')
                     def buildStages = [:]
                     services.each { service ->
-                        def svc     = service.trim()
-                        def context = (svc == 'frontend') ? './frontend' : "./backend/${svc}"
+                        def svc      = service.trim()
+                        def context  = (svc == 'frontend') ? './frontend' : "./backend/${svc}"
+                        // ── Injecter REACT_APP_API_URL uniquement pour le frontend ──
+                        def buildArg = (svc == 'frontend')
+                            ? "--build-arg REACT_APP_API_URL=${env.REACT_APP_API_URL}"
+                            : ""
                         buildStages["Build ${svc}"] = {
                             retry(2) {
                                 sh """
@@ -412,6 +430,7 @@ pipeline {
                                         --tag ${REGISTRY}/rfc-${svc}:${env.IMAGE_TAG} \
                                         --tag ${REGISTRY}/rfc-${svc}:latest \
                                         --load \
+                                        ${buildArg} \
                                         ${context}
                                 """
                             }
@@ -422,6 +441,9 @@ pipeline {
             }
         }
 
+        // ══════════════════════════════════════════════════════════════
+        // PUSH DOCKER
+        // ══════════════════════════════════════════════════════════════
         stage('Push Docker') {
             when { expression { !params.SKIP_DOCKER } }
             steps {
@@ -543,25 +565,36 @@ pipeline {
                                 PROJECT_SERVICE_URL=${PROJECT_SERVICE_URL} \
                                 CONGE_SERVICE_URL=${CONGE_SERVICE_URL} \
                                 NOTIF_SERVICE_URL=${NOTIF_SERVICE_URL} \
-                                REACT_APP_API_URL=${REACT_APP_API_URL} \
+                                REACT_APP_API_URL=${env.REACT_APP_API_URL_LOCAL} \
                                 docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
                             """
                         } else {
                             // ── MODE CLOUD : Kubernetes / Helm ──
-                            withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                            withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
                                 sh """
+                                    export KUBECONFIG=\$KUBECONFIG_FILE
+
+                                    kubectl get nodes
+
                                     helm upgrade --install rfc-connect ./helm/rfc-connect \
                                         --namespace ${params.ENV} \
                                         --create-namespace \
                                         --set image.tag=${env.IMAGE_TAG} \
                                         --set image.registry=${REGISTRY} \
                                         --set secrets.jwtSecret=\$JWT_SECRET \
-                                        --set mongo.uriAuth=${MONGO_URI_AUTH} \
-                                        --set mongo.uriUser=${MONGO_URI_USER} \
-                                        --set mongo.uriTask=${MONGO_URI_TASK} \
-                                        --set mongo.uriProject=${MONGO_URI_PROJECT} \
-                                        --set mongo.uriConge=${MONGO_URI_CONGE} \
-                                        --set mongo.uriNotif=${MONGO_URI_NOTIF} \
+                                        --set mongo.uriAuth=mongodb://mongodb.${params.ENV}.svc.cluster.local:27017/auth \
+                                        --set mongo.uriUser=mongodb://mongodb.${params.ENV}.svc.cluster.local:27017/user \
+                                        --set mongo.uriTask=mongodb://mongodb.${params.ENV}.svc.cluster.local:27017/task \
+                                        --set mongo.uriProject=mongodb://mongodb.${params.ENV}.svc.cluster.local:27017/project \
+                                        --set mongo.uriConge=mongodb://mongodb.${params.ENV}.svc.cluster.local:27017/conge \
+                                        --set mongo.uriNotif=mongodb://mongodb.${params.ENV}.svc.cluster.local:27017/notif \
+                                        --set services.authUrl=http://auth-service.${params.ENV}.svc.cluster.local:5001 \
+                                        --set services.userUrl=http://user-service.${params.ENV}.svc.cluster.local:5002 \
+                                        --set services.taskUrl=http://task-service.${params.ENV}.svc.cluster.local:5003 \
+                                        --set services.projectUrl=http://project-service.${params.ENV}.svc.cluster.local:5004 \
+                                        --set services.congeUrl=http://conge-service.${params.ENV}.svc.cluster.local:5005 \
+                                        --set services.notifUrl=http://notification-service.${params.ENV}.svc.cluster.local:5006 \
+                                        --set services.apiUrl=${env.REACT_APP_API_URL_CLOUD} \
                                         --wait --timeout 5m
                                 """
                             }
@@ -581,24 +614,41 @@ pipeline {
                 withCredentials([
                     string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET')
                 ]) {
-                    sh """
-                        IMAGE_TAG=${env.PREV_TAG} \
-                        JWT_SECRET=\$JWT_SECRET \
-                        MONGO_URI_AUTH=${MONGO_URI_AUTH} \
-                        MONGO_URI_USER=${MONGO_URI_USER} \
-                        MONGO_URI_TASK=${MONGO_URI_TASK} \
-                        MONGO_URI_PROJECT=${MONGO_URI_PROJECT} \
-                        MONGO_URI_CONGE=${MONGO_URI_CONGE} \
-                        MONGO_URI_NOTIF=${MONGO_URI_NOTIF} \
-                        AUTH_SERVICE_URL=${AUTH_SERVICE_URL} \
-                        USER_SERVICE_URL=${USER_SERVICE_URL} \
-                        TASK_SERVICE_URL=${TASK_SERVICE_URL} \
-                        PROJECT_SERVICE_URL=${PROJECT_SERVICE_URL} \
-                        CONGE_SERVICE_URL=${CONGE_SERVICE_URL} \
-                        NOTIF_SERVICE_URL=${NOTIF_SERVICE_URL} \
-                        REACT_APP_API_URL=${REACT_APP_API_URL} \
-                        docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
-                    """
+                    script {
+                        if (params.DEPLOY_TARGET == 'local') {
+                            // ── MODE LOCAL : docker-compose ──
+                            sh """
+                                IMAGE_TAG=${env.PREV_TAG} \
+                                JWT_SECRET=\$JWT_SECRET \
+                                MONGO_URI_AUTH=${MONGO_URI_AUTH} \
+                                MONGO_URI_USER=${MONGO_URI_USER} \
+                                MONGO_URI_TASK=${MONGO_URI_TASK} \
+                                MONGO_URI_PROJECT=${MONGO_URI_PROJECT} \
+                                MONGO_URI_CONGE=${MONGO_URI_CONGE} \
+                                MONGO_URI_NOTIF=${MONGO_URI_NOTIF} \
+                                AUTH_SERVICE_URL=${AUTH_SERVICE_URL} \
+                                USER_SERVICE_URL=${USER_SERVICE_URL} \
+                                TASK_SERVICE_URL=${TASK_SERVICE_URL} \
+                                PROJECT_SERVICE_URL=${PROJECT_SERVICE_URL} \
+                                CONGE_SERVICE_URL=${CONGE_SERVICE_URL} \
+                                NOTIF_SERVICE_URL=${NOTIF_SERVICE_URL} \
+                                REACT_APP_API_URL=${env.REACT_APP_API_URL_LOCAL} \
+                                docker-compose -f ${COMPOSE_FILE} up -d --remove-orphans
+                            """
+                        } else {
+                            // ── MODE CLOUD : Helm rollback ──
+                            withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                                sh """
+                                    export KUBECONFIG=\$KUBECONFIG_FILE
+                                    echo "=== Rollback Helm vers version précédente ==="
+                                    helm rollback rfc-connect -n ${params.ENV}
+                                    kubectl rollout status deployment/api-gateway \
+                                        -n ${params.ENV} --timeout=5m
+                                    kubectl get pods -n ${params.ENV}
+                                """
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -609,30 +659,45 @@ pipeline {
         stage('Health Check') {
             when { expression { !params.ROLLBACK } }
             steps {
-                sh '''
-                    echo "=== Health check via réseau Docker ==="
-                    for i in $(seq 1 24); do
-                        HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" \
-                            --connect-timeout 3 --max-time 5 \
-                            http://api-gateway:5000/health || echo "000")
-                        if [ "$HTTP_CODE" = "200" ]; then
-                            echo "[OK] api-gateway healthy apres tentative $i"
-                            exit 0
-                        fi
-                        echo "Tentative $i/24 -- HTTP $HTTP_CODE -- attente 5s..."
-                        sleep 5
-                    done
-                    echo "================================================"
-                    echo "  HEALTH CHECK ECHOUE apres 120s"
-                    echo "================================================"
-                    docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-                    docker inspect --format "{{.Name}} => {{.State.Health.Status}}" \
-                        mongodb auth-service user-service task-service \
-                        project-service conge-service notification-service \
-                        api-gateway 2>&1 || true
-                    docker logs api-gateway --tail=50 2>&1 || true
-                    exit 1
-                '''
+                script {
+                    if (params.DEPLOY_TARGET == 'local') {
+                        // ── MODE LOCAL ──
+                        sh '''
+                            echo "=== Health check Docker ==="
+                            for i in $(seq 1 24); do
+                                HTTP_CODE=$(curl -o /dev/null -s -w "%{http_code}" \
+                                    --connect-timeout 3 --max-time 5 \
+                                    http://api-gateway:5000/health || echo "000")
+                                if [ "$HTTP_CODE" = "200" ]; then
+                                    echo "[OK] api-gateway healthy apres tentative $i"
+                                    exit 0
+                                fi
+                                echo "Tentative $i/24 -- HTTP $HTTP_CODE -- attente 5s..."
+                                sleep 5
+                            done
+                            echo "================================================"
+                            echo "  HEALTH CHECK ECHOUE apres 120s"
+                            echo "================================================"
+                            docker ps -a --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+                            docker logs api-gateway --tail=50 2>&1 || true
+                            exit 1
+                        '''
+                    } else {
+                        // ── MODE CLOUD ──
+                        withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                            sh """
+                                export KUBECONFIG=\$KUBECONFIG_FILE
+                                echo "=== Health check Kubernetes ==="
+
+                                kubectl rollout status deployment/api-gateway \
+                                    -n ${params.ENV} --timeout=5m
+
+                                kubectl get pods -n ${params.ENV}
+                                kubectl get services -n ${params.ENV}
+                            """
+                        }
+                    }
+                }
             }
         }
 
@@ -650,15 +715,27 @@ pipeline {
     }
 
     // ══════════════════════════════════════════════════════════════════
-    // POST — cleanWs() EN DERNIER, après les logs
+    // POST
     // ══════════════════════════════════════════════════════════════════
     post {
         success {
-            echo "RFC Connect déployé -- build #${env.BUILD_NUMBER} -- version ${env.IMAGE_TAG}"
+            echo "RFC Connect déployé -- build #${env.BUILD_NUMBER} -- version ${env.IMAGE_TAG} -- target: ${params.DEPLOY_TARGET}"
         }
         failure {
+            script {
+                if (params.DEPLOY_TARGET == 'local') {
+                    sh "docker-compose -f ${env.WORKSPACE}/docker-compose.yml logs --tail=50 || true"
+                } else {
+                    withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                        sh """
+                            export KUBECONFIG=\$KUBECONFIG_FILE
+                            kubectl get pods -n ${params.ENV} || true
+                            kubectl describe pods -n ${params.ENV} || true
+                        """
+                    }
+                }
+            }
             echo "ECHEC -- build #${env.BUILD_NUMBER}"
-            sh "docker-compose -f ${env.WORKSPACE}/docker-compose.yml logs --tail=50 || true"
         }
         always {
             echo "Pipeline terminé -- build #${env.BUILD_NUMBER}"

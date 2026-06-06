@@ -205,12 +205,14 @@ services:
   # ── Frontend ──
   frontend:
     image: nourchouket2000/rfc-frontend:${IMAGE_TAG}
+    build:
+      context: ./frontend
+      args:
+        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:5000}
     container_name: frontend
     restart: unless-stopped
     ports:
       - "80:80"
-    environment:
-      - REACT_APP_API_URL=${REACT_APP_API_URL}
     depends_on:
       api-gateway:
         condition: service_healthy
