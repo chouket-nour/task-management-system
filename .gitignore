@@ -30,3 +30,9 @@ docker-entrypoint.sh
 docker-entrypoint.yml
 docker-entrypoint.sh4
 
+*.tfstate
+*.tfstate.*
+*.tfstate.backup
+.terraform/
+terraform.tfvars
+secrets.tfvars

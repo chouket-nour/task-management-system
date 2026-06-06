@@ -394,6 +394,17 @@ resource "azurestack_network_security_group" "aks" {
   source_address_prefix      = "10.244.0.0/16"
   destination_address_prefix = "*"
 }
+security_rule {
+  name                       = "allow-api-gateway-internet"
+  priority                   = 155
+  direction                  = "Inbound"
+  access                     = "Allow"
+  protocol                   = "Tcp"
+  source_port_range          = "*"
+  destination_port_range     = "5000"
+  source_address_prefix      = "Internet"
+  destination_address_prefix = "*"
+}
 }
 
 # ══════════════════════════════════════════════════════════════════
