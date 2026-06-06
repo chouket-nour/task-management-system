@@ -10,3 +10,7 @@ apimodel.json
 terraform/modules/aks/apimodel.json
 
 terraform/modules/aks/_output/
+*.tfstate
+*.tfstate.*
+*.backup
+.terraform/

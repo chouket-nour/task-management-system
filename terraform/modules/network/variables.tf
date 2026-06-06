@@ -10,7 +10,7 @@ variable "resource_group_name" {
 
 variable "vnet_address_space" {
   type        = list(string)
-  default     = ["10.0.0.0/16"]
+    default = ["10.0.0.0/16", "10.244.0.0/16"]
   description = "Plage d'adresses du VNet"
 }
 
