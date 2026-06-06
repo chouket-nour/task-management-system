@@ -232,22 +232,30 @@ pipeline {
         // PREPARE MONGODB BINARY
         // ══════════════════════════════════════════════════════════════
         stage('Prepare MongoDB Binary') {
-            steps {
-                script {
-                    sh """
-                        mkdir -p ${env.MONGOMS_DOWNLOAD_DIR}
-                        cd backend/auth-service
-                        node -e "
-                          const { MongoMemoryServer } = require('mongodb-memory-server');
-                          MongoMemoryServer.create().then(s => {
-                            console.log('Binaire MongoDB pret');
-                            s.stop();
-                          });
-                        "
-                    """
-                }
-            }
+    steps {
+        script {
+            sh """
+                mkdir -p ${env.MONGOMS_DOWNLOAD_DIR}
+                cd backend/auth-service
+                MONGOMS_DOWNLOAD_DIR=${env.MONGOMS_DOWNLOAD_DIR} \
+                MONGOMS_VERSION=6.0.0 \
+                node -e "
+                  process.env.MONGOMS_DOWNLOAD_DIR = '${env.MONGOMS_DOWNLOAD_DIR}';
+                  const { MongoMemoryServer } = require('mongodb-memory-server');
+                  MongoMemoryServer.create({
+                    instance: { startupTimeout: 60000 }
+                  }).then(s => {
+                    console.log('Binaire MongoDB pret');
+                    return s.stop();
+                  }).catch(e => {
+                    console.log('Warning MongoDB binary:', e.message);
+                    process.exit(0);
+                  });
+                "
+            """
         }
+    }
+}
 
         // ══════════════════════════════════════════════════════════════
         // TESTS
