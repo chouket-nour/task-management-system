@@ -36,3 +36,4 @@ docker-entrypoint.sh4
 .terraform/
 terraform.tfvars
 secrets.tfvars
+ansible/group_vars/all/vars.yml
