@@ -540,6 +540,7 @@
       KUBECONFIG={{ jenkins_home }}/.kube/config \
       helm upgrade --install monitoring \
         prometheus-community/kube-prometheus-stack \
+        --version 45.31.1 \
         --namespace monitoring \
         --create-namespace \
         -f /tmp/monitoring-values.yaml \
