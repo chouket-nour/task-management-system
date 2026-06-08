@@ -1,0 +1,14 @@
+grafana:
+  adminPassword: "{{ vault_grafana_password }}"
+  service:
+    type: LoadBalancer
+  persistence:
+    enabled: false
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    retention: 15d
+
+alertmanager:
+  enabled: true
