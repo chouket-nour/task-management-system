@@ -495,29 +495,32 @@
     msg: "{{ kubectl_nodes.stdout }}"
 
 # ═══════════════════════════════════════
-# 16. MONITORING — Prometheus + Grafana
+# 17. MONITORING — Prometheus + Grafana
 # ═══════════════════════════════════════
 - name: Ajouter repo prometheus-community
   shell: |
-    helm repo add prometheus-community \
-      https://prometheus-community.github.io/helm-charts
-    helm repo update
+    sudo -u jenkins \
+      HOME={{ jenkins_home }} \
+      KUBECONFIG={{ jenkins_home }}/.kube/config \
+      helm repo add prometheus-community \
+        https://prometheus-community.github.io/helm-charts
+    sudo -u jenkins \
+      HOME={{ jenkins_home }} \
+      helm repo update
   become: true
-  become_user: jenkins
-  environment:
-    HOME: "{{ jenkins_home }}"
-    KUBECONFIG: "{{ jenkins_home }}/.kube/config"
   changed_when: false
   tags: monitoring
 
 - name: Créer namespace monitoring
   shell: |
-    kubectl create namespace monitoring \
-      --dry-run=client -o yaml | kubectl apply -f -
+    sudo -u jenkins \
+      KUBECONFIG={{ jenkins_home }}/.kube/config \
+      kubectl create namespace monitoring \
+        --dry-run=client -o yaml | \
+    sudo -u jenkins \
+      KUBECONFIG={{ jenkins_home }}/.kube/config \
+      kubectl apply -f -
   become: true
-  become_user: jenkins
-  environment:
-    KUBECONFIG: "{{ jenkins_home }}/.kube/config"
   changed_when: false
   tags: monitoring
 
@@ -532,26 +535,25 @@
 
 - name: Installer Prometheus + Grafana via Helm
   shell: |
-    helm upgrade --install monitoring \
-      prometheus-community/kube-prometheus-stack \
-      --namespace monitoring \
-      --create-namespace \
-      -f /tmp/monitoring-values.yaml \
-      --wait --timeout 10m
+    sudo -u jenkins \
+      HOME={{ jenkins_home }} \
+      KUBECONFIG={{ jenkins_home }}/.kube/config \
+      helm upgrade --install monitoring \
+        prometheus-community/kube-prometheus-stack \
+        --namespace monitoring \
+        --create-namespace \
+        -f /tmp/monitoring-values.yaml \
+        --wait --timeout 10m
   become: true
-  become_user: jenkins
-  environment:
-    HOME: "{{ jenkins_home }}"
-    KUBECONFIG: "{{ jenkins_home }}/.kube/config"
   timeout: 700
   tags: monitoring
 
 - name: Vérifier les pods monitoring
-  shell: kubectl get pods -n monitoring
+  shell: |
+    sudo -u jenkins \
+      KUBECONFIG={{ jenkins_home }}/.kube/config \
+      kubectl get pods -n monitoring
   become: true
-  become_user: jenkins
-  environment:
-    KUBECONFIG: "{{ jenkins_home }}/.kube/config"
   register: monitoring_pods
   changed_when: false
   tags: monitoring
@@ -563,13 +565,12 @@
 
 - name: Récupérer IP externe Grafana
   shell: |
-    kubectl get svc monitoring-grafana \
-      -n monitoring \
-      -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+    sudo -u jenkins \
+      KUBECONFIG={{ jenkins_home }}/.kube/config \
+      kubectl get svc monitoring-grafana \
+        -n monitoring \
+        -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
   become: true
-  become_user: jenkins
-  environment:
-    KUBECONFIG: "{{ jenkins_home }}/.kube/config"
   register: grafana_ip
   changed_when: false
   retries: 10
@@ -582,9 +583,8 @@
     path: /tmp/monitoring-values.yaml
     state: absent
   tags: monitoring
-
 # ═══════════════════════════════════════
-# 17. MONITORING — Prometheus + Grafana
+# 17. Installation summary 
 # ═══════════════════════════════════════
 - name: Installation summary
   debug:
