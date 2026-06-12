@@ -14,13 +14,13 @@ const eH = { Authorization: `Bearer ${employeeToken}` };
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   await mongoose.connect(mongoServer.getUri());
-});
+},60000);
 
 afterAll(async () => {
   await mongoose.connection.dropDatabase();
   await mongoose.connection.close();
   await mongoServer.stop();
-});
+},60000);
 
 describe("Project Service", () => {
 

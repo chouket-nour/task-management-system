@@ -8,13 +8,13 @@ let mongoServer;
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   await mongoose.connect(mongoServer.getUri());
-});
+},60000);
 
 afterAll(async () => {
   await mongoose.connection.dropDatabase();
   await mongoose.connection.close();
   await mongoServer.stop();
-});
+},60000);
 
 describe("GET /health - project-service", () => {
   it("should return 200 when DB is connected", async () => {

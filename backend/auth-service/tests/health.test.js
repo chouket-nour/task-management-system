@@ -14,7 +14,7 @@ afterAll(async () => {
   await mongoose.connection.dropDatabase();
   await mongoose.connection.close();
   await mongoServer.stop();
-});
+},60000);
 
 describe("GET /health - auth-service", () => {
   it("should return 200 when DB is connected", async () => {
@@ -23,7 +23,7 @@ describe("GET /health - auth-service", () => {
     expect(res.body.status).toBe("UP");
     expect(res.body.service).toBe("auth-service");
     expect(res.body.mongo).toBe("connected");
-  });
+  },60000);
 
   it("should return 503 when DB is disconnected", async () => {
     await mongoose.connection.close();
