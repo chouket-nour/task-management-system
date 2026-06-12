@@ -8,7 +8,7 @@ let mongoServer;
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   await mongoose.connect(mongoServer.getUri());
-});
+},60000);
 
 afterAll(async () => {
   await mongoose.connection.dropDatabase();
@@ -23,7 +23,7 @@ describe("GET /health - conge-service", () => {
     expect(res.body.status).toBe("UP");
     expect(res.body.service).toBe("conge-service");
     expect(res.body.mongo).toBe("connected");
-  },60000);
+  });
 
   it("should return 503 when DB is disconnected", async () => {
     await mongoose.connection.close();
