@@ -6,7 +6,7 @@ import TaskDashboard from "./TaskDashboard";
 import CongeDashboard from "./Congedashboard";
 import NotificationDashboard from "./NotificationDashboard";
 
-const USER_API = axios.create({ baseURL: "http://localhost:5000/api/users" });
+const USER_API = axios.create({ baseURL: "/api/users" });
 const getAuthHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
 const WORK_MODES = [
@@ -67,14 +67,14 @@ export default function EmployeeDashboard() {
     if (!token) return;
 
     // ✅ Charger le nombre de notifs non lues au démarrage
-    axios.get("http://localhost:5000/api/notifications/mine", {
+    axios.get("/api/notifications/mine", {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       const unread = res.data.filter(n => !n.read).length;
       setUnreadNotifs(unread);
     }).catch(() => {});
 
-    const socket = io("http://localhost:5006", { auth: { token } });
+    const socket = io({ auth: { token } });
     socketRef.current = socket;
     socket.on("notification", (notif) => {
       setUnreadNotifs(p => p + 1);

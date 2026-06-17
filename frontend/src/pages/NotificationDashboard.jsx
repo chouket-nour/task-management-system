@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { io } from "socket.io-client";
 
-const NOTIF_API = axios.create({ baseURL: "http://localhost:5000/api/notifications" });
+const NOTIF_API = axios.create({ baseURL: "/api/notifications" });
 const getH = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
 
 const typeConfig = {
@@ -35,7 +35,7 @@ export default function NotificationDashboard({ onUnreadCount }) {
   const connectSocket = () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    const socket = io("http://localhost:5006", { auth: { token } });
+    const socket = io({ auth: { token } });
     socketRef.current = socket;
 
     socket.on("connect", () => console.log("[WS] Notifications connected"));

@@ -6,9 +6,9 @@ import ProjectDashboard from "./ProjectDashboard";
 import CongeManagerDashboard from "./CongeManagerDashboard";
 import NotificationDashboard from "./NotificationDashboard";
 
-const USER_API    = axios.create({ baseURL: "http://localhost:5000/api/users" });
-const PROJECT_API = axios.create({ baseURL: "http://localhost:5000/api/projects" });
-const LEAVE_API   = axios.create({ baseURL: "http://localhost:5000/api/conges" });
+const USER_API    = axios.create({ baseURL: "/api/users" });
+const PROJECT_API = axios.create({ baseURL: "/api/projects" });
+const LEAVE_API   = axios.create({ baseURL: "/api/conges" });
 const getAuthHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 const getEmployees  = () => USER_API.get("/", { headers: getAuthHeader() });
 const getAttendanceToday = (userId) => USER_API.get(`/attendance/${userId}`, { headers: getAuthHeader() });
@@ -75,14 +75,14 @@ export default function ManagerDashboard() {
     if (!token) return;
 
     // ✅ Charger les notifs non lues au démarrage
-    axios.get("http://localhost:5000/api/notifications/mine", {
+    axios.get("/api/notifications/mine", {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => {
       const unread = res.data.filter(n => !n.read);
       setNotifs(unread);
     }).catch(() => {});
 
-    const socket = io("http://localhost:5006", { auth: { token } });
+    const socket = io({ auth: { token } });
     socketRef.current = socket;
     socket.on("notification", (notif) => {
       setNotifs(p => [notif, ...p]);
