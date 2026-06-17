@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-
-const LEAVE_API = axios.create({ baseURL: "http://localhost:5000/api/conges" });
-const USER_API  = axios.create({ baseURL: "http://localhost:5000/api/users" });
-const getH = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+import { getEmployees, getMesConges, demanderConge, deleteConge } from "../services/api";
 
 const leaveTypes = ["Congé payé", "RTT", "Congé maladie", "Congé sans solde"];
 
@@ -50,7 +46,7 @@ export default function CongeDashboard() {
   const loadManager = async () => {
     try {
       // Récupérer tous les users et trouver le premier MANAGER
-      const res = await USER_API.get("/", getH());
+      const res = await getEmployees();
       const manager = res.data.find(u => u.role === "MANAGER");
       if (manager) {
         setManagerId(manager.authId || manager._id);
@@ -64,7 +60,7 @@ export default function CongeDashboard() {
   const loadLeaves = async () => {
     try {
       setLoading(true);
-      const res = await LEAVE_API.get("/my", getH());
+      const res = await getMesConges();
       setLeaves(res.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -76,12 +72,12 @@ export default function CongeDashboard() {
     if (days <= 0) return;
     setSubmitting(true);
     try {
-      const res = await LEAVE_API.post("/", {
+      const res = await demanderConge({
         ...form,
         days,
         employeeName: user.name,
         managerId,
-      }, getH());
+      });
       setLeaves(p => [res.data, ...p]);
       setForm({ type: "Congé payé", startDate: "", endDate: "", reason: "" });
       setShowForm(false);
@@ -93,7 +89,7 @@ export default function CongeDashboard() {
 
   const cancelLeave = async (id) => {
     try {
-      await LEAVE_API.delete(`/${id}`, getH());
+      await deleteConge(id);
       setLeaves(p => p.filter(l => l._id !== id));
     } catch (err) { console.error(err); }
   };

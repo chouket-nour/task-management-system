@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-
-const LEAVE_API = axios.create({ baseURL: "http://localhost:5000/api/conges" });
-const getH = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+import { getAllConges, repondreConge } from "../services/api";
 
 const statusStyle = (s) =>
   s === "Approuvé" ? { color: "#059669", bg: "#f0fdf4", icon: "✅" } :
@@ -29,7 +26,7 @@ export default function CongeManagerDashboard() {
   const loadLeaves = async () => {
     try {
       setLoading(true);
-      const res = await LEAVE_API.get("/all", getH());
+      const res = await getAllConges();
       setLeaves(res.data);
     } catch (err) { console.error(err); }
     finally { setLoading(false); }
@@ -37,7 +34,7 @@ export default function CongeManagerDashboard() {
 
   const decide = async (id, status, managerNote = "") => {
     try {
-      const res = await LEAVE_API.patch(`/${id}`, { status, managerNote }, getH());
+      const res = await repondreConge(id, status, managerNote);
       setLeaves(p => p.map(l => l._id === id ? res.data : l));
       setNoteModal(null);
       setNote("");
