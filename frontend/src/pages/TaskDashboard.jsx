@@ -1,9 +1,5 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-
-const TASK_API    = axios.create({ baseURL: "http://localhost:5000/api/tasks" });
-const PROJECT_API = axios.create({ baseURL: "http://localhost:5000/api/projects" });
-const getH = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+import { getMyTasks, getProjects, updateTask } from "../services/api";
 
 const taskStatusOpts = ["À faire", "En cours", "Terminé"];
 const taskSt  = (s) => s === "Terminé" ? { c:"#059669", bg:"#f0fdf4" } : s === "En cours" ? { c:"#2563eb", bg:"#eff6ff" } : { c:"#64748b", bg:"#f1f5f9" };
@@ -33,8 +29,8 @@ export default function TaskDashboard() {
 
         // Mes tâches depuis task-service
         const [resTasks, resProjs] = await Promise.all([
-          TASK_API.get(`/member/${userId}`, getH()),
-          PROJECT_API.get("/", getH()),
+          getMyTasks(userId),
+          getProjects(),
         ]);
         setMyTasks(resTasks.data);
         // Filtrer seulement les projets où l'employé est membre
@@ -51,7 +47,7 @@ export default function TaskDashboard() {
 
   const updateTaskStatus = async (taskId, status) => {
     try {
-      const res = await TASK_API.patch(`/${taskId}`, { status }, getH());
+      const res = await updateTask(taskId, { status });
       setMyTasks(p => p.map(t => t._id === taskId ? res.data : t));
     } catch (err) { console.error(err); }
   };

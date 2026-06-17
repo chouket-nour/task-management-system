@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
-
-const PROJECT_API = axios.create({ baseURL: "http://localhost:5000/api/projects" });
-const TASK_API    = axios.create({ baseURL: "http://localhost:5000/api/tasks" });
-const getH = () => ({ headers: { Authorization: `Bearer ${localStorage.getItem("token")}` } });
+import {
+  getProjects, createProject, updateProject, deleteProject,
+  getTasksByProject, createTask, updateTask, deleteTask,
+} from "../services/api";
 
 const DEPTS      = ["Data", "Cloud", "Security", "Non assigné"];
 const deptColors = { "Data": "#3b82f6", "Cloud": "#10b981", "Security": "#ef4444", "Non assigné": "#94a3b8" };
@@ -37,12 +36,12 @@ export default function ProjectDashboard({ empList = [] }) {
   const loadAll = async () => {
     try {
       setLoading(true);
-      const res = await PROJECT_API.get("/", getH());
+      const res = await getProjects();
       setProjects(res.data);
       const tasksMap = {};
       await Promise.all(res.data.map(async (p) => {
         try {
-          const r = await TASK_API.get(`/project/${p._id}`, getH());
+          const r = await getTasksByProject(p._id);
           tasksMap[p._id] = r.data;
         } catch { tasksMap[p._id] = []; }
       }));
@@ -55,10 +54,10 @@ export default function ProjectDashboard({ empList = [] }) {
   const empById   = (authId) => empList.find(e => e.authId === authId);
   const syncTasks = selProj ? getTasks(selProj._id) : [];
 
-  const createProject = async () => {
+  const createProj = async () => {
     if (!newProj.name) return;
     try {
-      const res = await PROJECT_API.post("/", newProj, getH());
+      const res = await createProject(newProj);
       setProjects(p => [...p, res.data]);
       setProjectTasks(t => ({ ...t, [res.data._id]: [] }));
       setNewProj({ name: "", dept: "Data", deadline: "", members: [] });
@@ -68,7 +67,7 @@ export default function ProjectDashboard({ empList = [] }) {
 
   const removeProject = async (id) => {
     try {
-      await PROJECT_API.delete(`/${id}`, getH());
+      await deleteProject(id);
       setProjects(p => p.filter(x => x._id !== id));
       if (selProj?._id === id) setSelProj(null);
     } catch (err) { console.error(err); }
@@ -80,16 +79,16 @@ export default function ProjectDashboard({ empList = [] }) {
       ? proj.members.filter(m => m !== authId)
       : [...proj.members, authId];
     try {
-      const res = await PROJECT_API.put(`/${projId}`, { ...proj, members }, getH());
+      const res = await updateProject(projId, { ...proj, members });
       setProjects(p => p.map(x => x._id === projId ? res.data : x));
       if (selProj?._id === projId) setSelProj(res.data);
     } catch (err) { console.error(err); }
   };
 
-  const createTask = async () => {
+  const addTask = async () => {
     if (!newTask.title || !selProj) return;
     try {
-      const res = await TASK_API.post("/", { ...newTask, projectId: selProj._id }, getH());
+      const res = await createTask({ ...newTask, projectId: selProj._id });
       setProjectTasks(t => ({ ...t, [selProj._id]: [...(t[selProj._id] || []), res.data] }));
       setNewTask({ title: "", assignedTo: "", status: "À faire", priority: "Normale" });
       setShowAddTask(false);
@@ -98,14 +97,14 @@ export default function ProjectDashboard({ empList = [] }) {
 
   const changeTaskStatus = async (taskId, status) => {
     try {
-      const res = await TASK_API.patch(`/${taskId}`, { status }, getH());
+      const res = await updateTask(taskId, { status });
       setProjectTasks(t => ({ ...t, [selProj._id]: t[selProj._id].map(x => x._id === taskId ? res.data : x) }));
     } catch (err) { console.error(err); }
   };
 
   const removeTask = async (taskId) => {
     try {
-      await TASK_API.delete(`/${taskId}`, getH());
+      await deleteTask(taskId);
       setProjectTasks(t => ({ ...t, [selProj._id]: t[selProj._id].filter(x => x._id !== taskId) }));
     } catch (err) { console.error(err); }
   };
@@ -315,7 +314,7 @@ export default function ProjectDashboard({ empList = [] }) {
               </div>
             ))}
             <div style={{ display:"flex", gap:"10px", marginTop:"20px" }}>
-              <button className="action-btn" style={{ flex:1, background:"#1e40af", color:"white", padding:"12px" }} onClick={createProject}>Créer le projet</button>
+              <button className="action-btn" style={{ flex:1, background:"#1e40af", color:"white", padding:"12px" }} onClick={createProj}>Créer le projet</button>
               <button className="action-btn" style={{ flex:1, background:"#f1f5f9", color:"#64748b", padding:"12px" }} onClick={()=>setShowAddProj(false)}>Annuler</button>
             </div>
           </div>
@@ -342,7 +341,7 @@ export default function ProjectDashboard({ empList = [] }) {
               {taskStatusOpts.map(o=><option key={o}>{o}</option>)}
             </select>
             <div style={{ display:"flex", gap:"10px" }}>
-              <button className="action-btn" style={{ flex:1, background:"#1e40af", color:"white", padding:"12px" }} onClick={createTask}>Ajouter</button>
+              <button className="action-btn" style={{ flex:1, background:"#1e40af", color:"white", padding:"12px" }} onClick={addTask}>Ajouter</button>
               <button className="action-btn" style={{ flex:1, background:"#f1f5f9", color:"#64748b", padding:"12px" }} onClick={()=>setShowAddTask(false)}>Annuler</button>
             </div>
           </div>
