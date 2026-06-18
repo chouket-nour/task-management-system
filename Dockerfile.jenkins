@@ -3,8 +3,15 @@ FROM jenkins/jenkins:lts
 USER root
 
 RUN apt-get update && \
-    apt-get install -y docker.io curl && \
+    apt-get install -y docker.io curl gnupg && \
+    # libssl1.1 pour MongoDB 6.0 sur Ubuntu 22.04
+    curl -fsSL http://archive.ubuntu.com/ubuntu/pool/main/o/openssl/libssl1.1_1.1.1f-1ubuntu2_amd64.deb \
+        -o /tmp/libssl1.1.deb && \
+    dpkg -i /tmp/libssl1.1.deb && \
+    rm /tmp/libssl1.1.deb && \
     curl -L "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64" \
-    -o /usr/local/bin/docker-compose && \
+        -o /usr/local/bin/docker-compose && \
     chmod +x /usr/local/bin/docker-compose && \
-    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+        | sh -s -- -b /usr/local/bin && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
