@@ -33,6 +33,7 @@ probes:
     failureThreshold: 5
 mongodb:
   storage: "5Gi"
+  nodeName: "k8s-agentpool-21123031-1"
 mongo:
   uriAuth:    "mongodb://mongodb.dev.svc.cluster.local:27017/auth"
   uriUser:    "mongodb://mongodb.dev.svc.cluster.local:27017/user"
