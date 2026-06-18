@@ -1,0 +1,54 @@
+{{- if .Values.kubenetRoutes.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: kubenet-routes
+  namespace: kube-system
+  labels:
+    app: kubenet-routes
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+spec:
+  selector:
+    matchLabels:
+      app: kubenet-routes
+  template:
+    metadata:
+      labels:
+        app: kubenet-routes
+    spec:
+      hostNetwork: true
+      tolerations:
+        - operator: Exists
+      initContainers:
+        - name: add-routes
+          image: alpine:3.18
+          securityContext:
+            privileged: true
+          command:
+            - sh
+            - -c
+            - |
+              echo "=== Adding kubenet routes ==="
+              ip route add {{ .Values.kubenetRoutes.nodes.agent0.podCidr }} \
+                via {{ .Values.kubenetRoutes.nodes.agent0.nodeIp }} \
+                dev eth0 2>/dev/null || true
+              ip route add {{ .Values.kubenetRoutes.nodes.agent1.podCidr }} \
+                via {{ .Values.kubenetRoutes.nodes.agent1.nodeIp }} \
+                dev eth0 2>/dev/null || true
+              ip route add {{ .Values.kubenetRoutes.nodes.master.podCidr }} \
+                via {{ .Values.kubenetRoutes.nodes.master.nodeIp }} \
+                dev eth0 2>/dev/null || true
+              echo "=== Routes added ==="
+              ip route show
+      containers:
+        - name: pause
+          image: registry.k8s.io/pause:3.6
+          resources:
+            requests:
+              cpu: "10m"
+              memory: "10Mi"
+            limits:
+              cpu: "50m"
+              memory: "32Mi"
+{{- end }}
