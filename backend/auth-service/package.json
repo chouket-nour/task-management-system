@@ -28,10 +28,12 @@
     "mongodb-memory-server": "^11.0.1",
     "nodemon": "^3.1.14",
     "supertest": "^7.2.2"
-  },
-   "overrides": {
-    "form-data": "^4.0.6"
-  },
+  },"overrides": {
+  "form-data": "^4.0.6",
+  "mongodb-memory-server-core": {
+    "form-data": "^3.0.0"
+  }
+},
   "mongodbMemoryServer": {
     "downloadDir": "/var/jenkins_home/.cache/mongodb-binaries",
     "version": "7.0.14",
