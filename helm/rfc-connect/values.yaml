@@ -31,7 +31,8 @@ probes:
     initialDelaySeconds: 30
     periodSeconds: 10
     failureThreshold: 5
-
+mongodb:
+  storage: "5Gi"
 mongo:
   uriAuth:    "mongodb://mongodb.dev.svc.cluster.local:27017/auth"
   uriUser:    "mongodb://mongodb.dev.svc.cluster.local:27017/user"
