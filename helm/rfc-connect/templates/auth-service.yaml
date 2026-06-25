@@ -35,14 +35,14 @@ spec:
               memory: {{ .Values.resources.limits.memory }}
           livenessProbe:
             httpGet:
-              path: /health/live
+              path: /health
               port: 5001
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
             failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
           readinessProbe:
             httpGet:
-              path: /health/ready
+              path: /health
               port: 5001
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}

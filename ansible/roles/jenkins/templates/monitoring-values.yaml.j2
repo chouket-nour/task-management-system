@@ -2,6 +2,16 @@ grafana:
   adminPassword: "{{ vault_grafana_password }}"
   service:
     type: LoadBalancer
+    loadBalancerIP: "102.141.206.212"
+    annotations:
+      service.beta.kubernetes.io/azure-load-balancer-internal: "false"
+  readinessProbe:
+    httpGet:
+      path: /api/health
+      port: 3000
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    failureThreshold: 5
   persistence:
     enabled: false
 

@@ -24,16 +24,18 @@ resources:
 
 probes:
   liveness:
-    initialDelaySeconds: 60
-    periodSeconds: 15
-    failureThreshold: 5
+    initialDelaySeconds: 120
+    periodSeconds: 20
+    failureThreshold: 10
   readiness:
-    initialDelaySeconds: 30
+    initialDelaySeconds: 60
     periodSeconds: 10
-    failureThreshold: 5
+    failureThreshold: 10
+
 mongodb:
   storage: "5Gi"
   nodeName: "k8s-agentpool-21123031-1"
+
 mongo:
   uriAuth:    "mongodb://mongodb.dev.svc.cluster.local:27017/auth"
   uriUser:    "mongodb://mongodb.dev.svc.cluster.local:27017/user"
@@ -52,7 +54,8 @@ services:
   projectUrl: "http://project-service.dev.svc.cluster.local:5004"
   congeUrl:   "http://conge-service.dev.svc.cluster.local:5005"
   notifUrl:   "http://notification-service.dev.svc.cluster.local:5006"
-  apiUrl:     "http://102.141.206.201:5000"  
+  apiUrl:     "http://102.141.206.201:5000"
+
 kubenetRoutes:
   enabled: true
   nodes:
