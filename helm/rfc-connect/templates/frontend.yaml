@@ -59,3 +59,4 @@ spec:
     - port: 80
       targetPort: 80
   type: LoadBalancer
+  loadBalancerIP: "102.141.206.203"

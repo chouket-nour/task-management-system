@@ -58,3 +58,4 @@ spec:
     - port: 5000
       targetPort: 5000
   type: LoadBalancer
+  loadBalancerIP: "102.141.206.201"
